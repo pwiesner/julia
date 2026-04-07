@@ -7,18 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E01000001 /* JuliaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000001; };
-		E01000002 /* TmuxSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000002; };
-		E01000003 /* TmuxWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000003; };
-		E01000004 /* TmuxCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000004; };
-		E01000005 /* TmuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000005; };
-		E01000006 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000006; };
-		E01000007 /* PaletteWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000007; };
-		E01000008 /* PaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000008; };
-		E01000009 /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000009; };
-		E01000010 /* CommandRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000010; };
-		E01000011 /* PaletteViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000011; };
-		E01000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E02000012; };
+		E01000001 /* JuliaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000001 /* JuliaApp.swift */; };
+		E01000002 /* TmuxSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000002 /* TmuxSession.swift */; };
+		E01000003 /* TmuxWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000003 /* TmuxWindow.swift */; };
+		E01000004 /* TmuxCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000004 /* TmuxCommand.swift */; };
+		E01000005 /* TmuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000005 /* TmuxService.swift */; };
+		E01000006 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000006 /* HotkeyService.swift */; };
+		E01000007 /* PaletteWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000007 /* PaletteWindow.swift */; };
+		E01000008 /* PaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000008 /* PaletteView.swift */; };
+		E01000009 /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000009 /* SessionListView.swift */; };
+		E01000010 /* CommandRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000010 /* CommandRowView.swift */; };
+		E01000011 /* PaletteViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000011 /* PaletteViewModel.swift */; };
+		E01000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E02000012 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -124,7 +124,7 @@
 /* Begin PBXNativeTarget section */
 		E05000001 /* Julia */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = E07000001;
+			buildConfigurationList = E07000001 /* Build configuration list for PBXNativeTarget "Julia" */;
 			buildPhases = (
 				E06000001 /* Sources */,
 				E03000001 /* Frameworks */,
@@ -154,7 +154,7 @@
 					};
 				};
 			};
-			buildConfigurationList = E07000002;
+			buildConfigurationList = E07000002 /* Build configuration list for PBXProject "Julia" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -332,7 +332,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = C3QVT95G54;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Julia/Info.plist;
@@ -344,7 +344,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.julia.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pwiesner.julia;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -361,7 +361,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = C3QVT95G54;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Julia/Info.plist;
@@ -373,7 +373,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.julia.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pwiesner.julia;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
