@@ -20,6 +20,8 @@ struct PaletteView: View {
                 .strokeBorder(.quaternary, lineWidth: 1)
         }
         .onAppear {
+            viewModel.searchText = ""
+            viewModel.selectedIndex = 0
             isSearchFocused = true
             viewModel.refresh()
         }
