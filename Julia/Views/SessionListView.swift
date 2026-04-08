@@ -53,16 +53,6 @@ struct SessionRowView: View {
                     Text(session.name)
                         .font(.system(size: 12, weight: .medium))
 
-                    if session.isAttached {
-                        Text("attached")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(.green)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(.green.opacity(0.15))
-                            .clipShape(.rect(cornerRadius: 3))
-                    }
-
                     Spacer()
 
                     Text("^[\(session.windows.count) window](inflect: true)")
