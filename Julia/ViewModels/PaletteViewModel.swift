@@ -53,7 +53,7 @@ final class PaletteViewModel {
             if query.isEmpty || session.name.lowercased().contains(query) {
                 items.append(PaletteItem(
                     title: session.name,
-                    subtitle: "^[\(session.windows.count) window](inflect: true)" + (session.isAttached ? " (attached)" : ""),
+                    subtitle: Self.sessionSubtitle(for: session),
                     icon: "terminal",
                     action: .switchSession(session.name)
                 ))
@@ -92,6 +92,12 @@ final class PaletteViewModel {
         return items
     }
 
+    private static func sessionSubtitle(for session: TmuxSession) -> String {
+        let count = session.windows.count
+        let windows = count == 1 ? "1 window" : "\(count) windows"
+        return session.isAttached ? "\(windows) (attached)" : windows
+    }
+
     private var sessionPickerItems: [PaletteItem] {
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
         return sessions
@@ -99,7 +105,7 @@ final class PaletteViewModel {
             .map { session in
                 PaletteItem(
                     title: session.name,
-                    subtitle: "^[\(session.windows.count) window](inflect: true)" + (session.isAttached ? " (attached)" : ""),
+                    subtitle: Self.sessionSubtitle(for: session),
                     icon: "terminal",
                     action: .switchSession(session.name)
                 )
