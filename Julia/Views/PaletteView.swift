@@ -20,13 +20,16 @@ struct PaletteView: View {
                 .strokeBorder(.quaternary, lineWidth: 1)
         }
         .onAppear {
+            viewModel.mode = .browsing
             viewModel.searchText = ""
             viewModel.selectedIndex = 0
             isSearchFocused = true
             viewModel.refresh()
         }
         .onKeyPress(.escape) {
-            onDismiss()
+            if !viewModel.cancelChainedFlow() {
+                onDismiss()
+            }
             return .handled
         }
         .onKeyPress(.downArrow) {
@@ -39,8 +42,10 @@ struct PaletteView: View {
         }
         .onKeyPress(.return) {
             Task {
-                await viewModel.executeSelected()
-                onDismiss()
+                let shouldDismiss = await viewModel.executeSelected()
+                if shouldDismiss {
+                    onDismiss()
+                }
             }
             return .handled
         }
@@ -51,7 +56,7 @@ struct PaletteView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
 
-            TextField("Search sessions, windows, or commands...", text: $viewModel.searchText)
+            TextField(viewModel.placeholder, text: $viewModel.searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 16))
                 .focused($isSearchFocused)
@@ -141,8 +146,10 @@ struct PaletteView: View {
                             .onTapGesture {
                                 viewModel.selectedIndex = index
                                 Task {
-                                    await viewModel.executeSelected()
-                                    onDismiss()
+                                    let shouldDismiss = await viewModel.executeSelected()
+                                    if shouldDismiss {
+                                        onDismiss()
+                                    }
                                 }
                             }
                         }

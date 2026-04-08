@@ -4,15 +4,44 @@ import SwiftUI
 @MainActor
 @Observable
 final class PaletteViewModel {
+    enum Mode: Equatable {
+        case browsing
+        case selectingTarget(command: TmuxCommandType)
+        case enteringInput(command: TmuxCommandType, target: String)
+    }
+
     var searchText = ""
     var sessions: [TmuxSession] = []
     var selectedIndex = 0
     var errorMessage: String?
     var isLoading = false
+    var mode: Mode = .browsing
 
     private let tmuxService = TmuxService()
 
+    var placeholder: String {
+        switch mode {
+        case .browsing:
+            "Search sessions, windows, or commands..."
+        case .selectingTarget(let command):
+            "Select session to \(command.displayName.lowercased())..."
+        case .enteringInput(_, let target):
+            "New name for \(target):"
+        }
+    }
+
     var filteredItems: [PaletteItem] {
+        switch mode {
+        case .browsing:
+            return browsingItems
+        case .selectingTarget:
+            return sessionPickerItems
+        case .enteringInput:
+            return []
+        }
+    }
+
+    private var browsingItems: [PaletteItem] {
         var items: [PaletteItem] = []
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
 
@@ -63,6 +92,20 @@ final class PaletteViewModel {
         return items
     }
 
+    private var sessionPickerItems: [PaletteItem] {
+        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
+        return sessions
+            .filter { query.isEmpty || $0.name.lowercased().contains(query) }
+            .map { session in
+                PaletteItem(
+                    title: session.name,
+                    subtitle: "^[\(session.windows.count) window](inflect: true)" + (session.isAttached ? " (attached)" : ""),
+                    icon: "terminal",
+                    action: .switchSession(session.name)
+                )
+            }
+    }
+
     func refresh() {
         Task {
             await loadSessions()
@@ -92,12 +135,74 @@ final class PaletteViewModel {
         selectedIndex = max(selectedIndex - 1, 0)
     }
 
-    func executeSelected() async {
-        let items = filteredItems
-        guard selectedIndex < items.count else { return }
+    /// Returns `true` if the palette should dismiss after this action, `false` to stay open.
+    func executeSelected() async -> Bool {
+        switch mode {
+        case .browsing:
+            let items = filteredItems
+            guard selectedIndex < items.count else { return false }
+            let item = items[selectedIndex]
 
-        let item = items[selectedIndex]
-        await execute(action: item.action)
+            // Clicking a chained-flow command transitions into the flow
+            // instead of dismissing the palette.
+            if case .command(let type) = item.action, beginChainedFlow(for: type) {
+                return false
+            }
+
+            await execute(action: item.action)
+            return true
+
+        case .selectingTarget(let command):
+            let items = filteredItems
+            guard selectedIndex < items.count,
+                  case .switchSession(let target) = items[selectedIndex].action else {
+                return false
+            }
+            mode = .enteringInput(command: command, target: target)
+            searchText = ""
+            selectedIndex = 0
+            return false
+
+        case .enteringInput(let command, let target):
+            let newValue = searchText.trimmingCharacters(in: .whitespaces)
+            guard !newValue.isEmpty else { return false }
+            let cmd = TmuxCommand(type: command, argument: newValue, targetSession: target)
+            await execute(action: .executeCommand(cmd))
+            resetToBrowsing()
+            return true
+        }
+    }
+
+    /// Cancels any in-progress chained flow. Returns `true` if a flow was cancelled,
+    /// `false` if there was nothing to cancel (caller should treat as a dismiss request).
+    func cancelChainedFlow() -> Bool {
+        switch mode {
+        case .browsing:
+            return false
+        case .selectingTarget, .enteringInput:
+            resetToBrowsing()
+            return true
+        }
+    }
+
+    private func beginChainedFlow(for type: TmuxCommandType) -> Bool {
+        // Only renameSession is wired into the chained flow for now. Other
+        // commands continue to no-op until we hook them up.
+        switch type {
+        case .renameSession:
+            mode = .selectingTarget(command: type)
+            searchText = ""
+            selectedIndex = 0
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func resetToBrowsing() {
+        mode = .browsing
+        searchText = ""
+        selectedIndex = 0
     }
 
     func switchToSession(_ sessionName: String) async {
