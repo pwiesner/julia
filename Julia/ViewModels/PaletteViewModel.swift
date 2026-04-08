@@ -24,9 +24,19 @@ final class PaletteViewModel {
         case .browsing:
             "Search sessions, windows, or commands..."
         case .selectingTarget(let command):
-            "Select session to \(command.displayName.lowercased())..."
-        case .enteringInput(_, let target):
-            "New name for \(target):"
+            switch command {
+            case .renameWindow:
+                "Select window to rename..."
+            default:
+                "Select session to \(command.displayName.lowercased())..."
+            }
+        case .enteringInput(let command, let target):
+            switch command {
+            case .renameWindow:
+                "New name for window \(target):"
+            default:
+                "New name for \(target):"
+            }
         }
     }
 
@@ -34,8 +44,13 @@ final class PaletteViewModel {
         switch mode {
         case .browsing:
             return browsingItems
-        case .selectingTarget:
-            return sessionPickerItems
+        case .selectingTarget(let command):
+            switch command {
+            case .renameWindow:
+                return windowPickerItems
+            default:
+                return sessionPickerItems
+            }
         case .enteringInput:
             return []
         }
@@ -112,6 +127,25 @@ final class PaletteViewModel {
             }
     }
 
+    private var windowPickerItems: [PaletteItem] {
+        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
+        var items: [PaletteItem] = []
+        for session in sessions {
+            for window in session.windows {
+                let title = "\(session.name):\(window.index) \(window.name)"
+                if query.isEmpty || title.lowercased().contains(query) {
+                    items.append(PaletteItem(
+                        title: title,
+                        subtitle: "Window in \(session.name)",
+                        icon: "macwindow",
+                        action: .switchWindow(sessionName: session.name, windowIndex: window.index)
+                    ))
+                }
+            }
+        }
+        return items
+    }
+
     func refresh() {
         Task {
             await loadSessions()
@@ -160,8 +194,14 @@ final class PaletteViewModel {
 
         case .selectingTarget(let command):
             let items = filteredItems
-            guard selectedIndex < items.count,
-                  case .switchSession(let target) = items[selectedIndex].action else {
+            guard selectedIndex < items.count else { return false }
+            let target: String
+            switch items[selectedIndex].action {
+            case .switchSession(let name):
+                target = name
+            case .switchWindow(let sessionName, let windowIndex):
+                target = "\(sessionName):\(windowIndex)"
+            default:
                 return false
             }
             mode = .enteringInput(command: command, target: target)
@@ -192,10 +232,8 @@ final class PaletteViewModel {
     }
 
     private func beginChainedFlow(for type: TmuxCommandType) -> Bool {
-        // Only renameSession is wired into the chained flow for now. Other
-        // commands continue to no-op until we hook them up.
         switch type {
-        case .renameSession:
+        case .renameSession, .renameWindow:
             mode = .selectingTarget(command: type)
             searchText = ""
             selectedIndex = 0

@@ -120,8 +120,12 @@ actor TmuxService {
         _ = try await execute(["move-window", "-t", sessionName])
     }
 
-    func renameWindow(_ newName: String) async throws {
-        _ = try await execute(["rename-window", newName])
+    func renameWindow(_ newName: String, target: String? = nil) async throws {
+        if let target {
+            _ = try await execute(["rename-window", "-t", target, newName])
+        } else {
+            _ = try await execute(["rename-window", newName])
+        }
     }
 
     // MARK: - Execute Command
@@ -166,7 +170,7 @@ actor TmuxService {
             guard let name = command.argument else {
                 throw TmuxError.missingArgument("window name")
             }
-            try await renameWindow(name)
+            try await renameWindow(name, target: command.targetSession)
         }
     }
 
