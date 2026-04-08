@@ -24,21 +24,12 @@ struct JuliaApp: App {
 
     init() {
         setupHotkey()
-        requestAccessibilityIfNeeded()
     }
 
     private func setupHotkey() {
         Task { @MainActor in
             hotkeyService.register { [self] in
                 togglePalette()
-            }
-        }
-    }
-
-    private func requestAccessibilityIfNeeded() {
-        Task { @MainActor in
-            if !AccessibilityHelper.isAccessibilityEnabled {
-                AccessibilityHelper.requestAccessibility()
             }
         }
     }
@@ -93,28 +84,6 @@ struct SettingsView: View {
                     Text("Cmd + Shift + T")
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("Accessibility") {
-                HStack {
-                    if AccessibilityHelper.isAccessibilityEnabled {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                        Text("Accessibility access granted")
-                    } else {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        Text("Accessibility access required for global hotkey")
-                    }
-
-                    Spacer()
-
-                    if !AccessibilityHelper.isAccessibilityEnabled {
-                        Button("Request Access") {
-                            AccessibilityHelper.requestAccessibility()
-                        }
-                    }
                 }
             }
 

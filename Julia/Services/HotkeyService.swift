@@ -74,18 +74,3 @@ final class HotkeyService {
     }
 }
 
-// MARK: - Accessibility Permission Helper
-
-@MainActor
-enum AccessibilityHelper {
-    static var isAccessibilityEnabled: Bool {
-        AXIsProcessTrusted()
-    }
-
-    static func requestAccessibility() {
-        // The string value of kAXTrustedCheckOptionPrompt is "AXTrustedCheckOptionPrompt"
-        // Using the string directly avoids concurrency issues with the C global
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
-    }
-}
