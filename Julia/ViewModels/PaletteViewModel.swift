@@ -63,6 +63,22 @@ final class PaletteViewModel {
         // Parse command from search text
         let parsedCommand = parseCommand(from: searchText)
 
+        // "<session>:[<window filter>]" — drill into a session and only
+        // show its windows, filtered by what comes after the colon.
+        if let (session, windowFilter) = sessionDrillDown(query: query) {
+            for window in session.windows {
+                if windowFilter.isEmpty || window.name.lowercased().contains(windowFilter) {
+                    items.append(PaletteItem(
+                        title: "\(session.name):\(window.index) \(window.name)",
+                        subtitle: "Window in \(session.name)",
+                        icon: "macwindow",
+                        action: .switchWindow(sessionName: session.name, windowIndex: window.index)
+                    ))
+                }
+            }
+            return items
+        }
+
         // Add matching sessions
         for session in sessions {
             if query.isEmpty || session.name.lowercased().contains(query) {
@@ -105,6 +121,20 @@ final class PaletteViewModel {
         }
 
         return items
+    }
+
+    /// Detects "<session>:<filter>" syntax and returns the matched session
+    /// plus the window-filter portion. Returns nil if the query doesn't have
+    /// a colon or the part before it doesn't exactly match a session name.
+    private func sessionDrillDown(query: String) -> (session: TmuxSession, filter: String)? {
+        guard let colonIndex = query.firstIndex(of: ":") else { return nil }
+        let sessionPart = String(query[..<colonIndex])
+        let filterPart = String(query[query.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces)
+        guard !sessionPart.isEmpty,
+              let session = sessions.first(where: { $0.name.lowercased() == sessionPart }) else {
+            return nil
+        }
+        return (session, filterPart)
     }
 
     private static func sessionSubtitle(for session: TmuxSession) -> String {
