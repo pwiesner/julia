@@ -30,3 +30,6 @@ Package.resolved
 
 # Beads
 .beads/
+
+# Task
+.task/

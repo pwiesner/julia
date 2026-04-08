@@ -1,0 +1,47 @@
+version: '3'
+
+vars:
+  APP_NAME: Julia
+  SCHEME: Julia
+  PROJECT: Julia.xcodeproj
+  BUILD_DIR: build
+  BUILT_APP: '{{.BUILD_DIR}}/Build/Products/Debug/{{.APP_NAME}}.app'
+  INSTALLED_APP: /Applications/{{.APP_NAME}}.app
+
+tasks:
+  default:
+    desc: Build, install to /Applications, and launch
+    cmds:
+      - task: run
+
+  build:
+    desc: Build the app to ./build (separate from Xcode's DerivedData)
+    cmds:
+      - |
+        set -o pipefail
+        xcodebuild -project {{.PROJECT}} -scheme {{.SCHEME}} -configuration Debug -derivedDataPath {{.BUILD_DIR}} build | xcbeautify
+    sources:
+      - Julia/**/*
+      - Julia.xcodeproj/project.pbxproj
+    generates:
+      - '{{.BUILT_APP}}/Contents/MacOS/{{.APP_NAME}}'
+
+  install:
+    desc: Build and copy app to /Applications
+    deps: [build]
+    cmds:
+      - rm -rf {{.INSTALLED_APP}}
+      - ditto {{.BUILT_APP}} {{.INSTALLED_APP}}
+
+  run:
+    desc: Build, install, and launch the app
+    deps: [install]
+    cmds:
+      - pkill -9 {{.APP_NAME}} 2>/dev/null || true
+      - sleep 1
+      - open {{.INSTALLED_APP}}
+
+  clean:
+    desc: Remove local build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
