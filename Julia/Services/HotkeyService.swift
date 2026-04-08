@@ -3,73 +3,73 @@ import Carbon.HIToolbox
 
 @MainActor
 final class HotkeyService {
-    // Use nonisolated(unsafe) for properties accessed in deinit
-    private nonisolated(unsafe) var globalMonitor: Any?
-    private nonisolated(unsafe) var localMonitor: Any?
-    private var onToggle: (() -> Void)?
+    // nonisolated(unsafe) so deinit (which is nonisolated) can access these.
+    // The Carbon callback also reads onToggle from a non-isolated context;
+    // it's only assigned once during register() and dispatched back to the
+    // main actor before invocation.
+    private nonisolated(unsafe) var hotKeyRef: EventHotKeyRef?
+    private nonisolated(unsafe) var eventHandler: EventHandlerRef?
+    private nonisolated(unsafe) var onToggle: (() -> Void)?
 
     func register(onToggle: @escaping () -> Void) {
         self.onToggle = onToggle
 
-        // Global monitor for when app is not focused
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(
-            matching: .keyDown
-        ) { [weak self] event in
-            self?.handleKeyEvent(event)
-        }
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: OSType(kEventHotKeyPressed)
+        )
 
-        // Local monitor for when app is focused
-        localMonitor = NSEvent.addLocalMonitorForEvents(
-            matching: .keyDown
-        ) { [weak self] event in
-            if self?.handleKeyEvent(event) == true {
-                return nil
-            }
-            return event
-        }
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+
+        InstallEventHandler(
+            GetApplicationEventTarget(),
+            { _, _, userData in
+                guard let userData else { return noErr }
+                let service = Unmanaged<HotkeyService>.fromOpaque(userData).takeUnretainedValue()
+                Task { @MainActor in
+                    service.onToggle?()
+                }
+                return noErr
+            },
+            1,
+            &eventType,
+            selfPtr,
+            &eventHandler
+        )
+
+        // Cmd+Shift+T — registered system-wide via Carbon, no Accessibility
+        // permission required.
+        let hotKeyID = EventHotKeyID(signature: OSType(0x4A554C49), id: 1) // 'JULI'
+        let modifiers = UInt32(cmdKey | shiftKey)
+        let keyCode = UInt32(kVK_ANSI_T)
+
+        RegisterEventHotKey(
+            keyCode,
+            modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKeyRef
+        )
     }
 
     func unregister() {
-        if let monitor = globalMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalMonitor = nil
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
         }
-        if let monitor = localMonitor {
-            NSEvent.removeMonitor(monitor)
-            localMonitor = nil
+        if let eventHandler {
+            RemoveEventHandler(eventHandler)
+            self.eventHandler = nil
         }
-    }
-
-    @discardableResult
-    private nonisolated func handleKeyEvent(_ event: NSEvent) -> Bool {
-        // Check for Cmd+Shift+T
-        let requiredFlags: NSEvent.ModifierFlags = [.command, .shift]
-        let keyCode = Int(event.keyCode)
-
-        // T key code is 17
-        guard keyCode == kVK_ANSI_T,
-              event.modifierFlags.contains(requiredFlags) else {
-            return false
-        }
-
-        // Make sure no other modifiers are pressed
-        let unwantedFlags: NSEvent.ModifierFlags = [.control, .option]
-        guard !event.modifierFlags.contains(unwantedFlags) else {
-            return false
-        }
-
-        Task { @MainActor [weak self] in
-            self?.onToggle?()
-        }
-        return true
     }
 
     deinit {
-        if let monitor = globalMonitor {
-            NSEvent.removeMonitor(monitor)
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
         }
-        if let monitor = localMonitor {
-            NSEvent.removeMonitor(monitor)
+        if let eventHandler {
+            RemoveEventHandler(eventHandler)
         }
     }
 }
