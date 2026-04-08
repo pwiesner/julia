@@ -46,9 +46,9 @@ struct SessionRowView: View {
                     }
                     .buttonStyle(.plain)
 
-                    Image(systemName: "terminal")
-                        .font(.system(size: 12))
-                        .foregroundStyle(session.isAttached ? .green : .secondary)
+                    Image(systemName: session.isAttached ? "terminal.fill" : "terminal")
+                        .font(.system(size: 12, weight: session.isAttached ? .semibold : .regular))
+                        .foregroundStyle(session.isAttached ? Color(red: 0.639, green: 0.745, blue: 0.549) : .secondary)
 
                     Text(session.name)
                         .font(.system(size: 12, weight: .medium))
