@@ -25,7 +25,7 @@ actor TmuxService {
             "list-windows",
             "-a",
             "-F",
-            "#{session_id}:#{session_name}:#{window_id}:#{window_index}:#{window_name}:#{window_active}"
+            "#{session_id}:#{session_name}:#{window_id}:#{window_index}:#{window_name}:#{window_active}:#{window_activity}"
         ])
 
         let (sessionsLines, windowsLines) = try await (sessionsOutput, windowsOutput)
@@ -35,16 +35,21 @@ actor TmuxService {
         var windowsBySessionId: [String: [TmuxWindow]] = [:]
         for line in windowsLines.components(separatedBy: "\n") where !line.isEmpty {
             let parts = line.components(separatedBy: ":")
-            guard parts.count >= 6,
+            guard parts.count >= 7,
                   let index = Int(parts[3]) else { continue }
 
             let sessionId = parts[0]
+            let lastActivity: Date? = {
+                guard let timestamp = TimeInterval(parts[6]), timestamp > 0 else { return nil }
+                return Date(timeIntervalSince1970: timestamp)
+            }()
             let window = TmuxWindow(
                 id: parts[2],
                 index: index,
                 name: parts[4],
                 sessionName: parts[1],
-                isActive: parts[5] == "1"
+                isActive: parts[5] == "1",
+                lastActivity: lastActivity
             )
             windowsBySessionId[sessionId, default: []].append(window)
         }
