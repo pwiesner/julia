@@ -12,65 +12,67 @@ actor TmuxService {
     // MARK: - Query Commands
 
     func listSessions() async throws -> [TmuxSession] {
-        let output = try await execute([
+        // Two tmux calls regardless of session count: one for sessions,
+        // one for ALL windows across ALL sessions. This is O(1) in tmux
+        // process spawns and scales cleanly to hundreds of sessions/windows.
+        async let sessionsOutput = execute([
             "list-sessions",
             "-F",
-            "#{session_id}:#{session_name}:#{session_attached}"
+            "#{session_id}:#{session_name}:#{session_attached}:#{session_last_attached}"
         ])
 
-        guard !output.isEmpty else { return [] }
+        async let windowsOutput = execute([
+            "list-windows",
+            "-a",
+            "-F",
+            "#{session_id}:#{session_name}:#{window_id}:#{window_index}:#{window_name}:#{window_active}"
+        ])
+
+        let (sessionsLines, windowsLines) = try await (sessionsOutput, windowsOutput)
+        guard !sessionsLines.isEmpty else { return [] }
+
+        // Bucket all windows by session id in one pass.
+        var windowsBySessionId: [String: [TmuxWindow]] = [:]
+        for line in windowsLines.components(separatedBy: "\n") where !line.isEmpty {
+            let parts = line.components(separatedBy: ":")
+            guard parts.count >= 6,
+                  let index = Int(parts[3]) else { continue }
+
+            let sessionId = parts[0]
+            let window = TmuxWindow(
+                id: parts[2],
+                index: index,
+                name: parts[4],
+                sessionName: parts[1],
+                isActive: parts[5] == "1"
+            )
+            windowsBySessionId[sessionId, default: []].append(window)
+        }
 
         var sessions: [TmuxSession] = []
-
-        for line in output.components(separatedBy: "\n") where !line.isEmpty {
+        for line in sessionsLines.components(separatedBy: "\n") where !line.isEmpty {
             let parts = line.components(separatedBy: ":")
-            guard parts.count >= 3 else { continue }
+            guard parts.count >= 4 else { continue }
 
             let sessionId = parts[0]
             let sessionName = parts[1]
             let isAttached = parts[2] == "1"
+            // tmux returns 0 for sessions that have never been attached.
+            let lastAttached: Date? = {
+                guard let timestamp = TimeInterval(parts[3]), timestamp > 0 else { return nil }
+                return Date(timeIntervalSince1970: timestamp)
+            }()
 
-            let windows = try await listWindows(for: sessionName)
-            let session = TmuxSession(
+            sessions.append(TmuxSession(
                 id: sessionId,
                 name: sessionName,
-                windows: windows,
-                isAttached: isAttached
-            )
-            sessions.append(session)
+                windows: windowsBySessionId[sessionId] ?? [],
+                isAttached: isAttached,
+                lastAttached: lastAttached
+            ))
         }
 
         return sessions
-    }
-
-    func listWindows(for sessionName: String) async throws -> [TmuxWindow] {
-        let output = try await execute([
-            "list-windows",
-            "-t", sessionName,
-            "-F",
-            "#{window_id}:#{window_index}:#{window_name}:#{window_active}"
-        ])
-
-        guard !output.isEmpty else { return [] }
-
-        var windows: [TmuxWindow] = []
-
-        for line in output.components(separatedBy: "\n") where !line.isEmpty {
-            let parts = line.components(separatedBy: ":")
-            guard parts.count >= 4,
-                  let index = Int(parts[1]) else { continue }
-
-            let window = TmuxWindow(
-                id: parts[0],
-                index: index,
-                name: parts[2],
-                sessionName: sessionName,
-                isActive: parts[3] == "1"
-            )
-            windows.append(window)
-        }
-
-        return windows
     }
 
     func isServerRunning() async -> Bool {
