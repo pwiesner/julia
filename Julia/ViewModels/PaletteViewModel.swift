@@ -16,8 +16,10 @@ final class PaletteViewModel {
     var errorMessage: String?
     var isLoading = false
     var mode: Mode = .browsing
+    var previewContent: String?
 
     private let tmuxService = TmuxService()
+    private var previewTask: Task<Void, Never>?
 
     var placeholder: String {
         switch mode {
@@ -192,6 +194,35 @@ final class PaletteViewModel {
         } catch {
             errorMessage = error.localizedDescription
             sessions = []
+        }
+    }
+
+    /// Refreshes `previewContent` based on the current selection. If the
+    /// selection is a window, captures its active pane (with a tiny debounce
+    /// so rapid arrow-key navigation doesn't spam tmux). Cancels any
+    /// in-flight capture from a previous selection.
+    func updatePreview() {
+        previewTask?.cancel()
+
+        let items = filteredItems
+        guard selectedIndex < items.count,
+              case .switchWindow(let sessionName, let windowIndex) = items[selectedIndex].action else {
+            previewContent = nil
+            return
+        }
+
+        let target = "\(sessionName):\(windowIndex)"
+        previewTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(50))
+            guard !Task.isCancelled, let self else { return }
+
+            do {
+                let content = try await tmuxService.capturePane(target: target)
+                guard !Task.isCancelled else { return }
+                self.previewContent = content
+            } catch {
+                self.previewContent = nil
+            }
         }
     }
 

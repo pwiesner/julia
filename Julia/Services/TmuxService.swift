@@ -80,6 +80,19 @@ actor TmuxService {
         return sessions
     }
 
+    /// Captures the current visible content of the active pane in the
+    /// given target window. Target is "<session>:<window_index>".
+    /// Returns plain text — escape codes are not requested (no -e flag),
+    /// and wrapped lines are joined (-J).
+    func capturePane(target: String) async throws -> String {
+        try await execute([
+            "capture-pane",
+            "-p",
+            "-J",
+            "-t", target
+        ])
+    }
+
     func isServerRunning() async -> Bool {
         do {
             _ = try await execute(["list-sessions"])

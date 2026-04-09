@@ -11,8 +11,9 @@ struct PaletteView: View {
             searchField
             Divider()
             contentArea
+            previewPane
         }
-        .frame(width: 600, height: 400)
+        .frame(width: 600, height: 620)
         .background(.regularMaterial)
         .clipShape(.rect(cornerRadius: 12))
         .overlay {
@@ -23,8 +24,15 @@ struct PaletteView: View {
             viewModel.mode = .browsing
             viewModel.searchText = ""
             viewModel.selectedIndex = 0
+            viewModel.previewContent = nil
             isSearchFocused = true
             viewModel.refresh()
+        }
+        .onChange(of: viewModel.selectedIndex) { _, _ in
+            viewModel.updatePreview()
+        }
+        .onChange(of: viewModel.searchText) { _, _ in
+            viewModel.updatePreview()
         }
         .onKeyPress(.escape) {
             if !viewModel.cancelChainedFlow() {
@@ -167,6 +175,41 @@ struct PaletteView: View {
                 errorBanner(error)
             }
         }
+    }
+
+    private var previewPane: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider()
+            HStack {
+                Text("Preview")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
+            ScrollView {
+                if let content = viewModel.previewContent {
+                    Text(content)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                } else {
+                    Text("Select a window to preview its contents")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                }
+            }
+            .defaultScrollAnchor(.bottom)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
+        }
+        .frame(height: 220)
     }
 
     private func errorBanner(_ message: String) -> some View {
