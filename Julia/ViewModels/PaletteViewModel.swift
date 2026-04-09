@@ -16,7 +16,7 @@ final class PaletteViewModel {
     var errorMessage: String?
     var isLoading = false
     var mode: Mode = .browsing
-    var previewContent: String?
+    var previewContent: TmuxService.PaneCapture?
 
     private let tmuxService = TmuxService()
     private var previewTask: Task<Void, Never>?

@@ -80,17 +80,40 @@ actor TmuxService {
         return sessions
     }
 
-    /// Captures the current visible content of the active pane in the
-    /// given target window. Target is "<session>:<window_index>".
-    /// Returns plain text — escape codes are not requested (no -e flag),
-    /// and wrapped lines are joined (-J).
-    func capturePane(target: String) async throws -> String {
-        try await execute([
+    /// Snapshot of an active pane's visible state, including the actual
+    /// pane dimensions so a renderer can size itself correctly.
+    struct PaneCapture: Sendable {
+        let content: String
+        let cols: Int
+        let rows: Int
+    }
+
+    /// Captures the current visible content of the active pane in the given
+    /// target window along with its pixel dimensions. Target format is
+    /// "<session>:<window_index>". Two parallel tmux calls (capture + size).
+    func capturePane(target: String) async throws -> PaneCapture {
+        async let content = execute([
             "capture-pane",
             "-p",
+            "-e",
             "-J",
             "-t", target
         ])
+        async let dimensions = execute([
+            "display-message",
+            "-p",
+            "-t", target,
+            "#{pane_width}x#{pane_height}"
+        ])
+
+        let (text, dim) = try await (content, dimensions)
+        let parts = dim.components(separatedBy: "x")
+        guard parts.count == 2,
+              let cols = Int(parts[0]),
+              let rows = Int(parts[1]) else {
+            throw TmuxError.executionFailed("Invalid pane dimensions: \(dim)")
+        }
+        return PaneCapture(content: text, cols: cols, rows: rows)
     }
 
     func isServerRunning() async -> Bool {

@@ -13,7 +13,7 @@ struct PaletteView: View {
             contentArea
             previewPane
         }
-        .frame(width: 600, height: 620)
+        .frame(width: 900, height: 620)
         .background(.regularMaterial)
         .clipShape(.rect(cornerRadius: 12))
         .overlay {
@@ -191,13 +191,9 @@ struct PaletteView: View {
             .padding(.top, 8)
             .padding(.bottom, 4)
 
-            ScrollView {
-                if let content = viewModel.previewContent {
-                    Text(content)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
+            Group {
+                if let capture = viewModel.previewContent {
+                    TerminalPreviewView(capture: capture)
                 } else {
                     Text("Select a window to preview its contents")
                         .font(.system(size: 11))
@@ -205,7 +201,6 @@ struct PaletteView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
             }
-            .defaultScrollAnchor(.bottom)
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
         }

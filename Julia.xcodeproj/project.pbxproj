@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5D9013A42F87367900EA39F5 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 5D9013A32F87367900EA39F5 /* SwiftTerm */; };
 		E01000001 /* JuliaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000001 /* JuliaApp.swift */; };
 		E01000002 /* TmuxSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000002 /* TmuxSession.swift */; };
 		E01000003 /* TmuxWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000003 /* TmuxWindow.swift */; };
@@ -19,6 +20,7 @@
 		E01000010 /* CommandRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000010 /* CommandRowView.swift */; };
 		E01000011 /* PaletteViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000011 /* PaletteViewModel.swift */; };
 		E01000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E02000012 /* Assets.xcassets */; };
+		F01000001 /* TerminalPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02000001 /* TerminalPreviewView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +39,7 @@
 		E02000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E02000014 /* Julia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Julia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E02000015 /* Julia.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Julia.entitlements; sourceTree = "<group>"; };
+		F02000001 /* TerminalPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPreviewView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +47,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5D9013A42F87367900EA39F5 /* SwiftTerm in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,6 +103,7 @@
 				E02000008 /* PaletteView.swift */,
 				E02000009 /* SessionListView.swift */,
 				E02000010 /* CommandRowView.swift */,
+				F02000001 /* TerminalPreviewView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -163,6 +168,9 @@
 				Base,
 			);
 			mainGroup = E04000001;
+			packageReferences = (
+				5D9013A22F87367900EA39F5 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+			);
 			productRefGroup = E04000006 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -199,6 +207,7 @@
 				E01000009 /* SessionListView.swift in Sources */,
 				E01000010 /* CommandRowView.swift in Sources */,
 				E01000011 /* PaletteViewModel.swift in Sources */,
+				F01000001 /* TerminalPreviewView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -403,6 +412,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5D9013A22F87367900EA39F5 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5D9013A32F87367900EA39F5 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5D9013A22F87367900EA39F5 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E08000001 /* Project object */;
 }
