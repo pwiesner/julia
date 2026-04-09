@@ -50,8 +50,16 @@ struct SessionRowView: View {
                         .font(.system(size: 12, weight: session.isAttached ? .semibold : .regular))
                         .foregroundStyle(session.isAttached ? Color(red: 0.639, green: 0.745, blue: 0.549) : .secondary)
 
-                    Text(session.name)
-                        .font(.system(size: 12, weight: .medium))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(session.name)
+                            .font(.system(size: 12, weight: .medium))
+
+                        if let lastAttached = session.lastAttached {
+                            Text(lastAttached, format: .relative(presentation: .numeric, unitsStyle: .narrow))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
 
                     Spacer()
 
