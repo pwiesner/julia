@@ -101,13 +101,23 @@ struct WindowRowView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(window.isActive ? .blue : .secondary)
 
-                Text(window.name)
-                    .font(.system(size: 11))
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text(window.name)
+                            .font(.system(size: 11))
 
-                if window.isActive {
-                    Image(systemName: "asterisk")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.blue)
+                        if window.isActive {
+                            Image(systemName: "asterisk")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.blue)
+                        }
+                    }
+
+                    if let lastActivity = window.lastActivity {
+                        Text(lastActivity, format: .relative(presentation: .numeric, unitsStyle: .narrow))
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
 
                 Spacer()
