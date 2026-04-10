@@ -10,10 +10,13 @@ struct PaletteView: View {
         VStack(spacing: 0) {
             searchField
             Divider()
-            contentArea
-            previewPane
+            HStack(spacing: 0) {
+                contentArea
+                Divider()
+                previewPane
+            }
         }
-        .frame(width: 900, height: 620)
+        .frame(width: 1100, height: 620)
         .background(.regularMaterial)
         .clipShape(.rect(cornerRadius: 12))
         .overlay {
@@ -179,17 +182,13 @@ struct PaletteView: View {
 
     private var previewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Divider()
-            HStack {
-                Text("Preview")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+            Text("Preview")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
 
             Group {
                 if let capture = viewModel.previewContent {
@@ -204,7 +203,7 @@ struct PaletteView: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
         }
-        .frame(height: 220)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func errorBanner(_ message: String) -> some View {

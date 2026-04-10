@@ -29,7 +29,7 @@ struct TerminalPreviewView: View {
                 .frame(width: CGFloat(capture.cols) * Self.cellWidth, alignment: .leading)
                 .padding(8)
         }
-        .defaultScrollAnchor(.bottom)
+        .defaultScrollAnchor(.bottomLeading)
         .background(Color.black)
     }
 
