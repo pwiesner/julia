@@ -33,3 +33,6 @@ Package.resolved
 
 # Task
 .task/
+
+# Claude Code
+.claude/

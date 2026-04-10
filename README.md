@@ -1,5 +1,8 @@
 # Julia
 
+> [!NOTE]  
+> This project is vibe coded the whole way down. It was created for fun and is not something i'm taking seriously.
+
 A macOS command palette for tmux. Press `Cmd+Shift+T` from anywhere to open the palette and switch sessions, manage windows, or run tmux commands. Why? Because I have a sprawl of tmux windows and can't ever remember the built in key commands to manage them.
 
 ## Requirements
