@@ -136,11 +136,10 @@ final class PaletteViewModel {
     }
 
     private static func windowItem(for window: TmuxWindow, in session: TmuxSession) -> PaletteItem {
-        // The session is already in the title prefix, so the subtitle carries
-        // what the title can't: process, agent state, branch, and recency.
+        // The session is already in the title prefix and the glyph carries
+        // agent state, so the subtitle holds process, branch, and recency.
         let details = [
             window.secondaryLabel,
-            window.agentStatusText,
             window.gitBranch,
             window.lastActivity?.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
         ].compactMap(\.self)

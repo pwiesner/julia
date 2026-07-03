@@ -70,8 +70,8 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         Self.isAgentCommand(currentCommand) || agentActivity != nil
     }
 
-    /// Short label for the agent's state, shown alongside the glyph so the
-    /// state doesn't rely on color alone.
+    /// Short label for the agent's state; the glyph shape shows it visually,
+    /// this names it for VoiceOver.
     var agentStatusText: String? {
         switch agentActivity {
         case .working: "working"

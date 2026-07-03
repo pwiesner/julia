@@ -108,6 +108,7 @@ struct WindowRowView: View {
                 Image(systemName: window.agentGlyph ?? "macwindow")
                     .font(.system(size: 10))
                     .foregroundStyle(window.agentGlyphColor ?? (window.isActive ? .blue : .secondary))
+                    .accessibilityLabel(window.agentStatusText.map { "Claude: \($0)" } ?? "")
 
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 4) {
@@ -124,13 +125,6 @@ struct WindowRowView: View {
                     }
 
                     HStack(spacing: 4) {
-                        if let status = window.agentStatusText {
-                            Text(status)
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundStyle(window.agentActivity == .waitingForInput ? .primary : .secondary)
-                                .layoutPriority(1)
-                        }
-
                         if let secondary = window.secondaryLabel {
                             Text(secondary)
                                 .font(.system(size: 9, weight: .medium))
