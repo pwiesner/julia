@@ -14,7 +14,7 @@ A macOS command palette for tmux. Press the global hotkey (`Cmd+Shift+T` by defa
 
 ## Install
 
-Grab `Julia.zip` from the [latest release](https://github.com/pwiesner/julia/releases), unzip, and drop `Julia.app` into `/Applications`. The app is signed with a development certificate but not notarized, so on first launch right-click → Open (or `xattr -d com.apple.quarantine /Applications/Julia.app`).
+Grab `Julia.zip` from the [latest release](https://github.com/pwiesner/julia/releases), unzip, and drop `Julia.app` into `/Applications`. Releases are Developer ID-signed and notarized, so they launch without any Gatekeeper fuss.
 
 ## Requirements
 
@@ -34,6 +34,6 @@ task           # Build, install to /Applications, and launch (default)
 task build     # Just build to ./build/
 task install   # Build and copy to /Applications/Julia.app
 task run       # Build, install, and launch
-task release   # Build a Release-configuration zip at ./build/Julia.zip
+task release   # Build, notarize, and staple a release zip at ./build/Julia.zip
 task clean     # Remove ./build/
 ```
