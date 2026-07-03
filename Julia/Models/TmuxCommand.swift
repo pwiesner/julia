@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 enum TmuxCommandType: String, CaseIterable, Sendable {
     case switchSession = "switch"
@@ -106,6 +106,7 @@ struct PaletteItem: Identifiable, Sendable {
     let title: String
     let subtitle: String?
     let icon: String
+    var iconColor: Color? = nil
     let action: PaletteAction
 
     enum PaletteAction: Sendable {

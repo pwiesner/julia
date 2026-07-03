@@ -8,18 +8,22 @@ struct CommandRowView: View {
         HStack(spacing: 12) {
             Image(systemName: item.icon)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(isSelected ? .white : .secondary)
+                .foregroundStyle(isSelected ? .white : (item.iconColor ?? .secondary))
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(isSelected ? .white : .primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
                         .font(.system(size: 11))
                         .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
             }
 

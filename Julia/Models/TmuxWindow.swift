@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 struct TmuxWindow: Identifiable, Hashable, Sendable {
     let id: String
@@ -77,6 +77,21 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         case .working: "working"
         case .waitingForInput: "your turn"
         case nil: nil
+        }
+    }
+
+    /// SF Symbol for agent windows: a speech bubble when Claude is waiting
+    /// on the user, sparkles otherwise. Nil for non-agent windows.
+    var agentGlyph: String? {
+        guard isAgentRunning else { return nil }
+        return agentActivity == .waitingForInput ? "bubble.left.fill" : "sparkles"
+    }
+
+    var agentGlyphColor: Color? {
+        switch agentActivity {
+        case .working: .orange
+        case .waitingForInput: .blue
+        case nil: isAgentRunning ? .orange : nil
         }
     }
 

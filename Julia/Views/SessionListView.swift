@@ -105,14 +105,16 @@ struct WindowRowView: View {
                     .foregroundStyle(.tertiary)
                     .frame(width: 20, alignment: .trailing)
 
-                Image(systemName: window.isAgentRunning ? "sparkles" : "macwindow")
+                Image(systemName: window.agentGlyph ?? "macwindow")
                     .font(.system(size: 10))
-                    .foregroundStyle(agentGlyphColor)
+                    .foregroundStyle(window.agentGlyphColor ?? (window.isActive ? .blue : .secondary))
 
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 4) {
                         Text(window.displayName)
                             .font(.system(size: 11))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
 
                         if window.isActive {
                             Image(systemName: "asterisk")
@@ -122,16 +124,18 @@ struct WindowRowView: View {
                     }
 
                     HStack(spacing: 4) {
+                        if let status = window.agentStatusText {
+                            Text(status)
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(window.agentActivity == .waitingForInput ? .primary : .secondary)
+                                .layoutPriority(1)
+                        }
+
                         if let secondary = window.secondaryLabel {
                             Text(secondary)
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundStyle(.secondary)
-                        }
-
-                        if let status = window.agentStatusText {
-                            Text(status)
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(window.agentActivity == .working ? .orange : .purple)
+                                .lineLimit(1)
                         }
 
                         if let branch = window.gitBranch {
@@ -146,6 +150,7 @@ struct WindowRowView: View {
                             Text(lastActivity, format: .relative(presentation: .numeric, unitsStyle: .narrow))
                                 .font(.system(size: 9))
                                 .foregroundStyle(.tertiary)
+                                .lineLimit(1)
                                 .layoutPriority(1)
                         }
                     }
@@ -159,14 +164,6 @@ struct WindowRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    private var agentGlyphColor: Color {
-        switch window.agentActivity {
-        case .working: .orange
-        case .waitingForInput: .purple
-        case nil: window.isAgentRunning ? .orange : window.isActive ? .blue : .secondary
-        }
     }
 }
 

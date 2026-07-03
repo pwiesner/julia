@@ -147,7 +147,8 @@ final class PaletteViewModel {
         return PaletteItem(
             title: "\(session.name):\(window.index) \(window.displayName)",
             subtitle: details.isEmpty ? nil : details.joined(separator: " · "),
-            icon: window.isAgentRunning ? "sparkles" : "macwindow",
+            icon: window.agentGlyph ?? "macwindow",
+            iconColor: window.agentGlyphColor,
             action: .switchWindow(sessionName: session.name, windowIndex: window.index)
         )
     }
