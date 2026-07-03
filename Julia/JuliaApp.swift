@@ -21,7 +21,7 @@ struct JuliaApp: App {
         .menuBarExtraStyle(.menu)
 
         Settings {
-            SettingsView()
+            SettingsView(hotkeyService: hotkeyService)
         }
     }
 
@@ -31,7 +31,7 @@ struct JuliaApp: App {
 
     private func setupHotkey() {
         Task { @MainActor in
-            hotkeyService.register { [self] in
+            hotkeyService.register(hotkey: .saved) { [self] in
                 togglePalette()
             }
         }
@@ -73,7 +73,7 @@ struct MenuBarView: View {
         Button("Show Palette") {
             onShowPalette()
         }
-        .keyboardShortcut("t", modifiers: [.command, .shift])
+        .keyboardShortcut(Hotkey.saved.keyboardShortcut)
 
         Divider()
 
@@ -91,33 +91,3 @@ struct MenuBarView: View {
     }
 }
 
-struct SettingsView: View {
-    var body: some View {
-        Form {
-            Section("Keyboard Shortcut") {
-                LabeledContent("Toggle Palette") {
-                    Text("Cmd + Shift + T")
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("About") {
-                LabeledContent("Version") {
-                    Text("1.0")
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("tmux") {
-                    Text("Required for operation")
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .frame(width: 400, height: 300)
-    }
-}
-
-#Preview("Settings") {
-    SettingsView()
-}

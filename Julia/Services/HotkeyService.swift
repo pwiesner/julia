@@ -11,7 +11,7 @@ final class HotkeyService {
     private nonisolated(unsafe) var eventHandler: EventHandlerRef?
     private nonisolated(unsafe) var onToggle: (() -> Void)?
 
-    func register(onToggle: @escaping () -> Void) {
+    func register(hotkey: Hotkey, onToggle: @escaping () -> Void) {
         self.onToggle = onToggle
 
         var eventType = EventTypeSpec(
@@ -37,15 +37,25 @@ final class HotkeyService {
             &eventHandler
         )
 
-        // Cmd+Shift+T — registered system-wide via Carbon, no Accessibility
-        // permission required.
-        let hotKeyID = EventHotKeyID(signature: OSType(0x4A554C49), id: 1) // 'JULI'
-        let modifiers = UInt32(cmdKey | shiftKey)
-        let keyCode = UInt32(kVK_ANSI_T)
+        registerKey(hotkey)
+    }
 
+    /// Swaps the active binding, e.g. after the user records a new shortcut
+    /// in settings. The event handler stays installed.
+    func update(hotkey: Hotkey) {
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
+        }
+        registerKey(hotkey)
+    }
+
+    /// Registered system-wide via Carbon; no Accessibility permission needed.
+    private func registerKey(_ hotkey: Hotkey) {
+        let hotKeyID = EventHotKeyID(signature: OSType(0x4A554C49), id: 1) // 'JULI'
         RegisterEventHotKey(
-            keyCode,
-            modifiers,
+            hotkey.keyCode,
+            hotkey.carbonModifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,
