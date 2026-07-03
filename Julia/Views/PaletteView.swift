@@ -18,6 +18,7 @@ struct PaletteView: View {
             }
         }
         .frame(width: 1100, height: 620)
+        .background { quickJumpShortcuts }
         .background(.regularMaterial)
         .clipShape(.rect(cornerRadius: 12))
         .overlay {
@@ -60,6 +61,29 @@ struct PaletteView: View {
                 }
             }
             return .handled
+        }
+    }
+
+    /// Invisible buttons carrying the cmd+1…9 shortcuts: each activates the
+    /// Nth visible row directly, so the whole working set is one chord away.
+    private var quickJumpShortcuts: some View {
+        ForEach(1..<10, id: \.self) { number in
+            Button("") {
+                quickJump(to: number - 1)
+            }
+            .keyboardShortcut(KeyEquivalent(Character("\(number)")), modifiers: .command)
+        }
+        .opacity(0)
+        .accessibilityHidden(true)
+    }
+
+    private func quickJump(to index: Int) {
+        guard index < viewModel.filteredItems.count else { return }
+        viewModel.selectedIndex = index
+        Task {
+            if await viewModel.executeSelected() {
+                onDismiss()
+            }
         }
     }
 
@@ -168,7 +192,8 @@ struct PaletteView: View {
                             let item = viewModel.filteredItems[index]
                             CommandRowView(
                                 item: item,
-                                isSelected: viewModel.selectedIndex == index
+                                isSelected: viewModel.selectedIndex == index,
+                                shortcutHint: index < 9 ? "⌘\(index + 1)" : nil
                             )
                             .id(index)
                             .onTapGesture {

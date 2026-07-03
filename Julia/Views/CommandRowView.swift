@@ -3,6 +3,7 @@ import SwiftUI
 struct CommandRowView: View {
     let item: PaletteItem
     let isSelected: Bool
+    var shortcutHint: String? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -28,6 +29,12 @@ struct CommandRowView: View {
             }
 
             Spacer()
+
+            if let shortcutHint {
+                Text(shortcutHint)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.quaternary))
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
