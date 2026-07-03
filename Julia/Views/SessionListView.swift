@@ -103,8 +103,9 @@ struct WindowRowView: View {
             HStack(spacing: 8) {
                 Text("\(window.index):")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-                    .frame(width: 20, alignment: .trailing)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(width: 28, alignment: .trailing)
 
                 Image(systemName: window.agentGlyph ?? "macwindow")
                     .font(.system(size: 10))
