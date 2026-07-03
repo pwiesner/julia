@@ -11,6 +11,8 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     let currentPath: String?
     /// Foreground process of the window's active pane (e.g. "zsh", "claude").
     let currentCommand: String?
+    /// Checked-out branch of the repository at `currentPath`, if any.
+    let gitBranch: String?
 
     init(
         id: String,
@@ -20,7 +22,8 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         isActive: Bool = false,
         lastActivity: Date? = nil,
         currentPath: String? = nil,
-        currentCommand: String? = nil
+        currentCommand: String? = nil,
+        gitBranch: String? = nil
     ) {
         self.id = id
         self.index = index
@@ -30,6 +33,7 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         self.lastActivity = lastActivity
         self.currentPath = currentPath
         self.currentCommand = currentCommand
+        self.gitBranch = gitBranch
     }
 
     /// Last component of the pane's working directory — the "project" the
@@ -93,6 +97,7 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         if name.localizedStandardContains(query) { return true }
         if let currentPath, currentPath.localizedStandardContains(query) { return true }
         if let currentCommand, currentCommand.localizedStandardContains(query) { return true }
+        if let gitBranch, gitBranch.localizedStandardContains(query) { return true }
         return false
     }
 }

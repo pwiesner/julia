@@ -13,6 +13,7 @@
 		E01000003 /* TmuxWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000003 /* TmuxWindow.swift */; };
 		E01000004 /* TmuxCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000004 /* TmuxCommand.swift */; };
 		E01000005 /* TmuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000005 /* TmuxService.swift */; };
+		E01000020 /* GitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000020 /* GitService.swift */; };
 		E01000006 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000006 /* HotkeyService.swift */; };
 		E01000007 /* PaletteWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000007 /* PaletteWindow.swift */; };
 		E01000008 /* PaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000008 /* PaletteView.swift */; };
@@ -29,6 +30,7 @@
 		E02000003 /* TmuxWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxWindow.swift; sourceTree = "<group>"; };
 		E02000004 /* TmuxCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxCommand.swift; sourceTree = "<group>"; };
 		E02000005 /* TmuxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxService.swift; sourceTree = "<group>"; };
+		E02000020 /* GitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitService.swift; sourceTree = "<group>"; };
 		E02000006 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
 		E02000007 /* PaletteWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteWindow.swift; sourceTree = "<group>"; };
 		E02000008 /* PaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteView.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				E02000005 /* TmuxService.swift */,
+				E02000020 /* GitService.swift */,
 				E02000006 /* HotkeyService.swift */,
 			);
 			path = Services;
@@ -201,6 +204,7 @@
 				E01000003 /* TmuxWindow.swift in Sources */,
 				E01000004 /* TmuxCommand.swift in Sources */,
 				E01000005 /* TmuxService.swift in Sources */,
+				E01000020 /* GitService.swift in Sources */,
 				E01000006 /* HotkeyService.swift in Sources */,
 				E01000007 /* PaletteWindow.swift in Sources */,
 				E01000008 /* PaletteView.swift in Sources */,

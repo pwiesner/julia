@@ -128,10 +128,19 @@ struct WindowRowView: View {
                                 .foregroundStyle(.secondary)
                         }
 
+                        if let branch = window.gitBranch {
+                            Text(branch)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+
                         if let lastActivity = window.lastActivity {
                             Text(lastActivity, format: .relative(presentation: .numeric, unitsStyle: .narrow))
                                 .font(.system(size: 9))
                                 .foregroundStyle(.tertiary)
+                                .layoutPriority(1)
                         }
                     }
                 }

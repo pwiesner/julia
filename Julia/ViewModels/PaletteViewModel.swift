@@ -136,14 +136,16 @@ final class PaletteViewModel {
     }
 
     private static func windowItem(for window: TmuxWindow, in session: TmuxSession) -> PaletteItem {
-        let subtitle = if let secondary = window.secondaryLabel {
-            "\(secondary) · in \(session.name)"
-        } else {
-            "Window in \(session.name)"
-        }
+        // The session is already in the title prefix, so the subtitle carries
+        // what the title can't: process, branch, and recency.
+        let details = [
+            window.secondaryLabel,
+            window.gitBranch,
+            window.lastActivity?.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
+        ].compactMap(\.self)
         return PaletteItem(
             title: "\(session.name):\(window.index) \(window.displayName)",
-            subtitle: subtitle,
+            subtitle: details.isEmpty ? nil : details.joined(separator: " · "),
             icon: window.isAgentRunning ? "sparkles" : "macwindow",
             action: .switchWindow(sessionName: session.name, windowIndex: window.index)
         )

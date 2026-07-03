@@ -45,8 +45,10 @@ actor TmuxService {
         let (sessionsLines, windowsLines) = try await (sessionsOutput, windowsOutput)
         guard !sessionsLines.isEmpty else { return [] }
 
-        // Bucket all windows by session id in one pass.
+        // Bucket all windows by session id in one pass. Branch lookups are
+        // file reads; cache per refresh since windows often share a directory.
         var windowsBySessionId: [String: [TmuxWindow]] = [:]
+        var branchByPath: [String: String?] = [:]
         for line in windowsLines.components(separatedBy: "\n") where !line.isEmpty {
             let parts = line.components(separatedBy: sep)
             guard parts.count >= 9,
@@ -57,6 +59,11 @@ actor TmuxService {
                 guard let timestamp = TimeInterval(parts[6]), timestamp > 0 else { return nil }
                 return Date(timeIntervalSince1970: timestamp)
             }()
+            let currentPath = parts[7].isEmpty ? nil : parts[7]
+            let gitBranch = currentPath.flatMap { path in
+                branchByPath[path, default: GitService.currentBranch(forDirectory: path)]
+            }
+            if let currentPath { branchByPath[currentPath] = gitBranch }
             let window = TmuxWindow(
                 id: parts[2],
                 index: index,
@@ -64,8 +71,9 @@ actor TmuxService {
                 sessionName: parts[1],
                 isActive: parts[5] == "1",
                 lastActivity: lastActivity,
-                currentPath: parts[7].isEmpty ? nil : parts[7],
-                currentCommand: parts[8].isEmpty ? nil : parts[8]
+                currentPath: currentPath,
+                currentCommand: parts[8].isEmpty ? nil : parts[8],
+                gitBranch: gitBranch
             )
             windowsBySessionId[sessionId, default: []].append(window)
         }
