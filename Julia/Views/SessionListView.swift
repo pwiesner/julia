@@ -52,11 +52,11 @@ struct SessionRowView: View {
 
                     VStack(alignment: .leading, spacing: 1) {
                         Text(session.name)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(Design.sidebarTitleFont)
 
                         if let lastAttached = session.lastAttached {
                             Text(lastAttached, format: .relative(presentation: .numeric, unitsStyle: .narrow))
-                                .font(.system(size: 9))
+                                .font(Design.sidebarDetailFont)
                                 .foregroundStyle(.tertiary)
                         }
                     }
@@ -113,7 +113,7 @@ struct WindowRowView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 4) {
                         Text(window.displayName)
-                            .font(.system(size: 11))
+                            .font(Design.sidebarRowFont)
                             .lineLimit(1)
                             .truncationMode(.tail)
 
@@ -127,14 +127,14 @@ struct WindowRowView: View {
                     HStack(spacing: 4) {
                         if let secondary = window.secondaryLabel {
                             Text(secondary)
-                                .font(.system(size: 9, weight: .medium))
+                                .font(Design.sidebarDetailFont.weight(.medium))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
 
                         if let branch = window.gitBranch {
                             Text(branch)
-                                .font(.system(size: 9))
+                                .font(Design.sidebarDetailFont)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
@@ -142,7 +142,7 @@ struct WindowRowView: View {
 
                         if let lastActivity = window.lastActivity {
                             Text(lastActivity, format: .relative(presentation: .numeric, unitsStyle: .narrow))
-                                .font(.system(size: 9))
+                                .font(Design.sidebarDetailFont)
                                 .foregroundStyle(.tertiary)
                                 .lineLimit(1)
                                 .layoutPriority(1)

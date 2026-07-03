@@ -5,23 +5,29 @@ struct CommandRowView: View {
     let isSelected: Bool
     var shortcutHint: String? = nil
 
+    @State private var isHovered = false
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: item.icon)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(isSelected ? .white : (item.iconColor ?? .secondary))
-                .frame(width: 24)
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: Design.chipCornerRadius)
+                .fill(isSelected ? AnyShapeStyle(.white.opacity(0.2)) : AnyShapeStyle(.primary.opacity(0.06)))
+                .frame(width: Design.iconChipSize, height: Design.iconChipSize)
+                .overlay {
+                    Image(systemName: item.icon)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(isSelected ? .white : (item.iconColor ?? .secondary))
+                }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Design.rowTitleFont)
                     .foregroundStyle(isSelected ? .white : .primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
-                        .font(.system(size: 11))
+                        .font(Design.rowSubtitleFont)
                         .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -32,15 +38,28 @@ struct CommandRowView: View {
 
             if let shortcutHint {
                 Text(shortcutHint)
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(Design.shortcutHintFont)
                     .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.quaternary))
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(isSelected ? Color.accentColor : Color.clear)
-        .clipShape(.rect(cornerRadius: 6))
+        .padding(.horizontal, Design.rowHorizontalPadding)
+        .padding(.vertical, Design.rowVerticalPadding)
+        .background {
+            RoundedRectangle(cornerRadius: Design.rowCornerRadius)
+                .fill(rowFill)
+        }
         .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+    }
+
+    private var rowFill: AnyShapeStyle {
+        if isSelected {
+            AnyShapeStyle(Color.accentColor)
+        } else if isHovered {
+            AnyShapeStyle(.primary.opacity(0.05))
+        } else {
+            AnyShapeStyle(.clear)
+        }
     }
 }
 
@@ -53,7 +72,8 @@ struct CommandRowView: View {
                 icon: "terminal",
                 action: .switchSession("dev")
             ),
-            isSelected: false
+            isSelected: false,
+            shortcutHint: "⌘1"
         )
         CommandRowView(
             item: PaletteItem(
@@ -62,7 +82,8 @@ struct CommandRowView: View {
                 icon: "terminal",
                 action: .switchSession("work")
             ),
-            isSelected: true
+            isSelected: true,
+            shortcutHint: "⌘2"
         )
         CommandRowView(
             item: PaletteItem(

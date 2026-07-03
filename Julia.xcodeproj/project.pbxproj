@@ -16,6 +16,7 @@
 		E01000020 /* GitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000020 /* GitService.swift */; };
 		E01000021 /* ClaudeSessionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000021 /* ClaudeSessionService.swift */; };
 		E01000023 /* VisitHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000023 /* VisitHistoryService.swift */; };
+		E01000024 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000024 /* Design.swift */; };
 		E01000022 /* ClaudeActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000022 /* ClaudeActivity.swift */; };
 		E01000006 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000006 /* HotkeyService.swift */; };
 		E01000007 /* PaletteWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000007 /* PaletteWindow.swift */; };
@@ -36,6 +37,7 @@
 		E02000020 /* GitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitService.swift; sourceTree = "<group>"; };
 		E02000021 /* ClaudeSessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSessionService.swift; sourceTree = "<group>"; };
 		E02000023 /* VisitHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitHistoryService.swift; sourceTree = "<group>"; };
+		E02000024 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
 		E02000022 /* ClaudeActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeActivity.swift; sourceTree = "<group>"; };
 		E02000006 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
 		E02000007 /* PaletteWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteWindow.swift; sourceTree = "<group>"; };
@@ -74,6 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				E02000001 /* JuliaApp.swift */,
+				E02000024 /* Design.swift */,
 				E04000003 /* Models */,
 				E04000004 /* Services */,
 				E04000005 /* Views */,
@@ -216,6 +219,7 @@
 				E01000020 /* GitService.swift in Sources */,
 				E01000021 /* ClaudeSessionService.swift in Sources */,
 				E01000023 /* VisitHistoryService.swift in Sources */,
+				E01000024 /* Design.swift in Sources */,
 				E01000022 /* ClaudeActivity.swift in Sources */,
 				E01000006 /* HotkeyService.swift in Sources */,
 				E01000007 /* PaletteWindow.swift in Sources */,

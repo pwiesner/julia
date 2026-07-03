@@ -19,11 +19,11 @@ struct PaletteView: View {
         }
         .frame(width: 1100, height: 620)
         .background { quickJumpShortcuts }
-        .background(.regularMaterial)
-        .clipShape(.rect(cornerRadius: 12))
+        .background(.ultraThinMaterial)
+        .clipShape(.rect(cornerRadius: Design.windowCornerRadius))
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.quaternary, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Design.windowCornerRadius)
+                .strokeBorder(Design.panelRim, lineWidth: 1)
         }
         .onAppear {
             viewModel.mode = .browsing
@@ -103,11 +103,12 @@ struct PaletteView: View {
             .help("Toggle sessions sidebar (⌘B)")
 
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.tertiary)
 
             TextField(viewModel.placeholder, text: $viewModel.searchText)
                 .textFieldStyle(.plain)
-                .font(.system(size: 16))
+                .font(Design.searchFont)
                 .focused($isSearchFocused)
 
             if !viewModel.searchText.isEmpty {
@@ -134,26 +135,27 @@ struct PaletteView: View {
         }
     }
 
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(Design.sectionHeaderFont)
+            .foregroundStyle(.tertiary)
+            .textCase(.uppercase)
+            .tracking(1.2)
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+    }
+
     private var sessionSidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Sessions")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+            sectionHeader("Sessions")
 
             if viewModel.sessions.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 24))
-                        .foregroundStyle(.tertiary)
-                    Text("No tmux sessions")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ContentUnavailableView(
+                    "No tmux sessions",
+                    systemImage: "terminal",
+                    description: Text("Start tmux to see sessions here.")
+                )
             } else {
                 SessionListView(
                     sessions: viewModel.sessions,
@@ -177,13 +179,7 @@ struct PaletteView: View {
 
     private var commandList: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Actions")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+            sectionHeader("Actions")
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -224,26 +220,25 @@ struct PaletteView: View {
 
     private var previewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Preview")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+            sectionHeader("Preview")
 
             Group {
                 if let capture = viewModel.previewContent {
                     TerminalPreviewView(capture: capture)
+                        .clipShape(.rect(cornerRadius: Design.previewCornerRadius))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Design.previewCornerRadius)
+                                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+                        }
                 } else {
                     Text("Select a window to preview its contents")
-                        .font(.system(size: 11))
+                        .font(Design.rowSubtitleFont)
                         .foregroundStyle(.tertiary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
