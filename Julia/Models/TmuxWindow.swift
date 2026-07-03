@@ -67,7 +67,7 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     }
 
     var isAgentRunning: Bool {
-        Self.isAgentCommand(currentCommand)
+        Self.isAgentCommand(currentCommand) || agentActivity != nil
     }
 
     /// Short label for the agent's state, shown alongside the glyph so the

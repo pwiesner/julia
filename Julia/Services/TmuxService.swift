@@ -66,8 +66,8 @@ actor TmuxService {
             }
             if let currentPath { branchByPath[currentPath] = gitBranch }
             let agentActivity: ClaudeActivity? =
-                if let currentPath, TmuxWindow.isAgentCommand(currentCommand) {
-                    ClaudeSessionService.activity(forDirectory: currentPath)
+                if Self.mayHostAgent(currentCommand) {
+                    await paneActivity(windowId: parts[2])
                 } else {
                     nil
                 }
@@ -115,6 +115,21 @@ actor TmuxService {
         }
 
         return sessions
+    }
+
+    /// Commands whose panes are worth inspecting for a Claude session.
+    /// Claude sometimes runs behind a "node" shim, so plain agent-command
+    /// matching misses it; the pane classifier returns nil for actual
+    /// node apps, so the extra captures cost a few spawns and nothing else.
+    private static func mayHostAgent(_ command: String?) -> Bool {
+        TmuxWindow.isAgentCommand(command) || command?.lowercased() == "node"
+    }
+
+    /// Captures the given window's active pane and classifies any Claude
+    /// session found in it.
+    private func paneActivity(windowId: String) async -> ClaudeActivity? {
+        guard let text = try? await execute(["capture-pane", "-p", "-t", windowId]) else { return nil }
+        return ClaudeSessionService.activity(fromPaneText: text)
     }
 
     /// Snapshot of an active pane's visible state, including the actual

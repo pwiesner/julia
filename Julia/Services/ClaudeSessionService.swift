@@ -1,78 +1,44 @@
 import Foundation
 
-/// Infers what the Claude Code session in a given directory is doing by
-/// reading its transcript. Claude Code appends every message to
-/// `~/.claude/projects/<encoded-cwd>/<session>.jsonl`, so the most recent
-/// user/assistant entry says whether it's mid-turn or waiting for the user.
+/// Classifies what a Claude Code session is doing from its pane content.
+/// The footer Claude Code draws is the source of truth: a spinner line like
+/// "· Architecting… (2m 11s · ↓ 6.2k tokens)" or "esc to interrupt" renders
+/// while a turn runs, and permission prompts render "Do you want to
+/// proceed?". Transcript files can't distinguish a running tool from a
+/// permission prompt, so the pane is more reliable than the transcript.
 enum ClaudeSessionService {
-    static func activity(forDirectory path: String) -> ClaudeActivity? {
-        guard let transcript = newestTranscript(forDirectory: path),
-              let entry = lastConversationEntry(in: transcript) else { return nil }
+    /// Claude Code chrome visible at an idle prompt (the permission-mode
+    /// indicator line). Seeing it without a spinner means the session is
+    /// waiting for the user.
+    private static let idleChromeMarkers = [
+        "shift+tab to cycle",
+        "accept edits on",
+        "plan mode on",
+        "bypass permissions on"
+    ]
 
-        switch entry.type {
-        case "user":
-            // A user message or tool result was just appended; Claude is
-            // processing it.
-            return .working
-        case "assistant":
-            // A tool call means the turn continues; plain text ends it.
-            return entry.hasToolUse ? .working : .waitingForInput
-        default:
-            return nil
+    static func activity(fromPaneText text: String) -> ClaudeActivity? {
+        // Only inspect the footer region: conversation text above it can
+        // quote any of these markers.
+        let footer = text.split(separator: "\n", omittingEmptySubsequences: true)
+            .suffix(15)
+            .map { $0.lowercased() }
+
+        if footer.contains(where: { $0.contains("do you want to proceed") }) {
+            return .waitingForInput
         }
-    }
-
-    // MARK: - Transcript discovery
-
-    /// Claude Code names project directories by replacing every
-    /// non-alphanumeric character of the working directory with "-".
-    private static func newestTranscript(forDirectory path: String) -> URL? {
-        let encoded = path.map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
-        let dir = URL.homeDirectory.appending(path: ".claude/projects/\(encoded)")
-        let files = (try? FileManager.default.contentsOfDirectory(
-            at: dir,
-            includingPropertiesForKeys: [.contentModificationDateKey]
-        )) ?? []
-        return files
-            .filter { $0.pathExtension == "jsonl" }
-            .max { modificationDate($0) < modificationDate($1) }
-    }
-
-    private static func modificationDate(_ url: URL) -> Date {
-        (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
-    }
-
-    // MARK: - Transcript parsing
-
-    private struct Entry {
-        let type: String
-        let hasToolUse: Bool
-    }
-
-    /// Returns the most recent user/assistant entry, skipping housekeeping
-    /// records ("system", "permission-mode", "ai-title", ...). Reads only
-    /// the file's tail; transcripts grow to many megabytes.
-    private static func lastConversationEntry(in url: URL) -> Entry? {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
-        defer { try? handle.close() }
-
-        let chunkSize: UInt64 = 256 * 1024
-        let size = (try? handle.seekToEnd()) ?? 0
-        try? handle.seek(toOffset: size > chunkSize ? size - chunkSize : 0)
-        guard let data = try? handle.readToEnd() else { return nil }
-        // Lossy decode: the chunk may start mid-character or mid-line, and
-        // that partial first line fails JSON parsing anyway.
-        let text = String(decoding: data, as: UTF8.self)
-
-        for line in text.split(separator: "\n").reversed() {
-            guard let json = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
-                  let type = json["type"] as? String,
-                  type == "user" || type == "assistant" else { continue }
-            let content = (json["message"] as? [String: Any])?["content"]
-            let hasToolUse = (content as? [[String: Any]])?
-                .contains { $0["type"] as? String == "tool_use" } ?? false
-            return Entry(type: type, hasToolUse: hasToolUse)
+        if footer.contains(where: { $0.contains("esc to interrupt") || isSpinnerLine($0) }) {
+            return .working
+        }
+        if footer.contains(where: { line in idleChromeMarkers.contains { line.contains($0) } }) {
+            return .waitingForInput
         }
         return nil
+    }
+
+    /// Matches the activity spinner: a glyph, a gerund, an ellipsis, then
+    /// elapsed time — "· architecting… (2m 11s · …)" (already lowercased).
+    private static func isSpinnerLine(_ line: String) -> Bool {
+        line.range(of: #"^\s*\S{1,2} [a-z]+… \(\d"#, options: .regularExpression) != nil
     }
 }
