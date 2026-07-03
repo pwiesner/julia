@@ -39,7 +39,7 @@ struct CommandRowView: View {
             if let shortcutHint {
                 Text(shortcutHint)
                     .font(Design.shortcutHintFont)
-                    .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.quaternary))
+                    .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.tertiary))
             }
         }
         .padding(.horizontal, Design.rowHorizontalPadding)

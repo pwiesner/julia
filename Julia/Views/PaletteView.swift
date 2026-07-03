@@ -19,7 +19,7 @@ struct PaletteView: View {
         }
         .frame(width: 1100, height: 620)
         .background { quickJumpShortcuts }
-        .background(.ultraThinMaterial)
+        .background(.thickMaterial)
         .clipShape(.rect(cornerRadius: Design.windowCornerRadius))
         .overlay {
             RoundedRectangle(cornerRadius: Design.windowCornerRadius)
@@ -138,7 +138,7 @@ struct PaletteView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(Design.sectionHeaderFont)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.secondary)
             .textCase(.uppercase)
             .tracking(1.2)
             .padding(.horizontal, 14)

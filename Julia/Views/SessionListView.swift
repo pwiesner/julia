@@ -63,23 +63,16 @@ struct SessionRowView: View {
 
                     Spacer()
 
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text("^[\(session.windows.count) window](inflect: true)")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-
-                        if let created = session.created {
-                            Text("created \(created, format: .relative(presentation: .numeric, unitsStyle: .narrow))")
-                                .font(.system(size: 9))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
+                    Text("^[\(session.windows.count) window](inflect: true)")
+                        .font(Design.sidebarDetailFont)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .help(sessionHelp)
 
             if isExpanded {
                 ForEach(session.windows) { window in
@@ -89,6 +82,14 @@ struct SessionRowView: View {
                     )
                 }
             }
+        }
+    }
+
+    private var sessionHelp: String {
+        if let created = session.created {
+            "Created \(created.formatted(.relative(presentation: .named)))"
+        } else {
+            session.name
         }
     }
 }
@@ -110,47 +111,27 @@ struct WindowRowView: View {
                     .foregroundStyle(window.agentGlyphColor ?? (window.isActive ? .blue : .secondary))
                     .accessibilityLabel(window.agentStatusText.map { "Claude: \($0)" } ?? "")
 
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 4) {
-                        Text(window.displayName)
-                            .font(Design.sidebarRowFont)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+                Text(window.displayName)
+                    .font(Design.sidebarRowFont)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
-                        if window.isActive {
-                            Image(systemName: "asterisk")
-                                .font(.system(size: 8))
-                                .foregroundStyle(.blue)
-                        }
-                    }
-
-                    HStack(spacing: 4) {
-                        if let secondary = window.secondaryLabel {
-                            Text(secondary)
-                                .font(Design.sidebarDetailFont.weight(.medium))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-
-                        if let branch = window.gitBranch {
-                            Text(branch)
-                                .font(Design.sidebarDetailFont)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                        }
-
-                        if let lastActivity = window.lastActivity {
-                            Text(lastActivity, format: .relative(presentation: .numeric, unitsStyle: .narrow))
-                                .font(Design.sidebarDetailFont)
-                                .foregroundStyle(.tertiary)
-                                .lineLimit(1)
-                                .layoutPriority(1)
-                        }
-                    }
+                if window.isActive {
+                    Image(systemName: "asterisk")
+                        .font(.system(size: 8))
+                        .foregroundStyle(.blue)
                 }
 
                 Spacer()
+
+                // The sidebar is a slim map: process, branch, and agent
+                // state live in the actions column. Just name and recency.
+                if let lastActivity = window.lastActivity {
+                    Text(lastActivity, format: .relative(presentation: .numeric, unitsStyle: .narrow))
+                        .font(Design.sidebarDetailFont)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
             .padding(.vertical, 3)
             .padding(.leading, 32)

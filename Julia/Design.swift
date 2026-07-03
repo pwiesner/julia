@@ -24,12 +24,12 @@ enum Design {
 
     static let searchFont = Font.system(size: 17)
     static let rowTitleFont = Font.system(size: 13, weight: .medium)
-    static let rowSubtitleFont = Font.system(size: 11)
+    static let rowSubtitleFont = Font.system(size: 12)
     static let sectionHeaderFont = Font.system(size: 10, weight: .semibold)
     static let shortcutHintFont = Font.system(size: 10, design: .monospaced)
-    static let sidebarTitleFont = Font.system(size: 12, weight: .medium)
-    static let sidebarRowFont = Font.system(size: 11)
-    static let sidebarDetailFont = Font.system(size: 9)
+    static let sidebarTitleFont = Font.system(size: 13, weight: .medium)
+    static let sidebarRowFont = Font.system(size: 12)
+    static let sidebarDetailFont = Font.system(size: 10)
 
     // MARK: Metrics
 
