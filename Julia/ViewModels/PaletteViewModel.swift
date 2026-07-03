@@ -19,6 +19,7 @@ final class PaletteViewModel {
     var previewContent: TmuxService.PaneCapture?
 
     private let tmuxService = TmuxService()
+    private let visitHistory = VisitHistoryService()
     private var previewTask: Task<Void, Never>?
 
     var placeholder: String {
@@ -76,9 +77,27 @@ final class PaletteViewModel {
             return items
         }
 
+        // Empty query: the palette's job is jumping, so windows come first
+        // in visit-recency order — the working set assembles at the top and
+        // row 0 (preselected) is the previous window, making hotkey+return
+        // an instant toggle. Sessions and commands follow.
+        if query.isEmpty {
+            items.append(contentsOf: recentWindowItems)
+            for session in sessions {
+                items.append(PaletteItem(
+                    title: session.name,
+                    subtitle: Self.sessionSubtitle(for: session),
+                    icon: "terminal",
+                    action: .switchSession(session.name)
+                ))
+            }
+            addAllCommands(to: &items)
+            return items
+        }
+
         // Add matching sessions
         for session in sessions {
-            if query.isEmpty || session.name.lowercased().contains(query) {
+            if session.name.lowercased().contains(query) {
                 items.append(PaletteItem(
                     title: session.name,
                     subtitle: Self.sessionSubtitle(for: session),
@@ -104,15 +123,40 @@ final class PaletteViewModel {
                 icon: command.type.icon,
                 action: .executeCommand(command)
             ), at: 0)
-        } else if !query.isEmpty {
+        } else {
             // Show relevant commands when there's a search query
             addContextualCommands(to: &items, query: query)
-        } else {
-            // Show all commands when search is empty
-            addAllCommands(to: &items)
         }
 
         return items
+    }
+
+    /// All windows in working-set order: previously visited windows by
+    /// visit recency, then unvisited ones by tmux activity, with the
+    /// window the user is sitting in last — the palette exists to leave it.
+    private var recentWindowItems: [PaletteItem] {
+        let all = sessions.flatMap { session in
+            session.windows.map { (session: session, window: $0) }
+        }
+        let currentId = all.first { $0.session.isAttached && $0.window.isActive }?.window.id
+
+        func rank(_ window: TmuxWindow) -> (tier: Int, date: Date) {
+            if window.id == currentId {
+                (2, .distantPast)
+            } else if let visit = visitHistory.lastVisit(windowId: window.id) {
+                (0, visit)
+            } else {
+                (1, window.lastActivity ?? .distantPast)
+            }
+        }
+
+        return all
+            .sorted {
+                let a = rank($0.window)
+                let b = rank($1.window)
+                return a.tier != b.tier ? a.tier < b.tier : a.date > b.date
+            }
+            .map { Self.windowItem(for: $0.window, in: $0.session) }
     }
 
     /// Detects "<session>:<filter>" syntax and returns the matched session
@@ -193,10 +237,19 @@ final class PaletteViewModel {
         do {
             sessions = try await tmuxService.listSessions()
             errorMessage = nil
+            visitHistory.prune(keeping: Set(sessions.flatMap(\.windows).map(\.id)))
         } catch {
             errorMessage = error.localizedDescription
             sessions = []
         }
+    }
+
+    /// Resolves a window's stable tmux id and records the jump. Ids survive
+    /// renames and moves, which "session:index" keys would not.
+    private func recordWindowVisit(session: String, windowIndex: Int) {
+        guard let id = sessions.first(where: { $0.name == session })?
+            .windows.first(where: { $0.index == windowIndex })?.id else { return }
+        visitHistory.recordVisit(windowId: id)
     }
 
     /// Refreshes `previewContent` based on the current selection. If the
@@ -323,6 +376,7 @@ final class PaletteViewModel {
     func switchToWindow(session: String, windowIndex: Int) async {
         do {
             try await tmuxService.switchToWindow(sessionName: session, windowIndex: windowIndex)
+            recordWindowVisit(session: session, windowIndex: windowIndex)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -338,6 +392,7 @@ final class PaletteViewModel {
 
             case .switchWindow(let session, let windowIndex):
                 try await tmuxService.switchToWindow(sessionName: session, windowIndex: windowIndex)
+                recordWindowVisit(session: session, windowIndex: windowIndex)
 
             case .command:
                 // Commands without arguments need more input
