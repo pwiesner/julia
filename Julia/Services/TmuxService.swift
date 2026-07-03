@@ -60,10 +60,17 @@ actor TmuxService {
                 return Date(timeIntervalSince1970: timestamp)
             }()
             let currentPath = parts[7].isEmpty ? nil : parts[7]
+            let currentCommand = parts[8].isEmpty ? nil : parts[8]
             let gitBranch = currentPath.flatMap { path in
                 branchByPath[path, default: GitService.currentBranch(forDirectory: path)]
             }
             if let currentPath { branchByPath[currentPath] = gitBranch }
+            let agentActivity: ClaudeActivity? =
+                if let currentPath, TmuxWindow.isAgentCommand(currentCommand) {
+                    ClaudeSessionService.activity(forDirectory: currentPath)
+                } else {
+                    nil
+                }
             let window = TmuxWindow(
                 id: parts[2],
                 index: index,
@@ -72,8 +79,9 @@ actor TmuxService {
                 isActive: parts[5] == "1",
                 lastActivity: lastActivity,
                 currentPath: currentPath,
-                currentCommand: parts[8].isEmpty ? nil : parts[8],
-                gitBranch: gitBranch
+                currentCommand: currentCommand,
+                gitBranch: gitBranch,
+                agentActivity: agentActivity
             )
             windowsBySessionId[sessionId, default: []].append(window)
         }

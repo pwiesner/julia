@@ -107,7 +107,7 @@ struct WindowRowView: View {
 
                 Image(systemName: window.isAgentRunning ? "sparkles" : "macwindow")
                     .font(.system(size: 10))
-                    .foregroundStyle(window.isAgentRunning ? .orange : window.isActive ? .blue : .secondary)
+                    .foregroundStyle(agentGlyphColor)
 
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 4) {
@@ -126,6 +126,12 @@ struct WindowRowView: View {
                             Text(secondary)
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundStyle(.secondary)
+                        }
+
+                        if let status = window.agentStatusText {
+                            Text(status)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(window.agentActivity == .working ? .orange : .purple)
                         }
 
                         if let branch = window.gitBranch {
@@ -153,6 +159,14 @@ struct WindowRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private var agentGlyphColor: Color {
+        switch window.agentActivity {
+        case .working: .orange
+        case .waitingForInput: .purple
+        case nil: window.isAgentRunning ? .orange : window.isActive ? .blue : .secondary
+        }
     }
 }
 

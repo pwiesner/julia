@@ -13,6 +13,8 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     let currentCommand: String?
     /// Checked-out branch of the repository at `currentPath`, if any.
     let gitBranch: String?
+    /// What the Claude session in this window's directory is doing, if known.
+    let agentActivity: ClaudeActivity?
 
     init(
         id: String,
@@ -23,7 +25,8 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         lastActivity: Date? = nil,
         currentPath: String? = nil,
         currentCommand: String? = nil,
-        gitBranch: String? = nil
+        gitBranch: String? = nil,
+        agentActivity: ClaudeActivity? = nil
     ) {
         self.id = id
         self.index = index
@@ -34,6 +37,7 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         self.currentPath = currentPath
         self.currentCommand = currentCommand
         self.gitBranch = gitBranch
+        self.agentActivity = agentActivity
     }
 
     /// Last component of the pane's working directory — the "project" the
@@ -57,9 +61,23 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     /// Foreground commands that indicate a coding agent is running in the pane.
     private static let agentCommands: Set<String> = ["claude", "claude.exe", "codex", "aider", "gemini"]
 
+    static func isAgentCommand(_ command: String?) -> Bool {
+        guard let command else { return false }
+        return agentCommands.contains(command.lowercased())
+    }
+
     var isAgentRunning: Bool {
-        guard let currentCommand else { return false }
-        return Self.agentCommands.contains(currentCommand.lowercased())
+        Self.isAgentCommand(currentCommand)
+    }
+
+    /// Short label for the agent's state, shown alongside the glyph so the
+    /// state doesn't rely on color alone.
+    var agentStatusText: String? {
+        switch agentActivity {
+        case .working: "working"
+        case .waitingForInput: "your turn"
+        case nil: nil
+        }
     }
 
     /// True when the name is tmux's automatic rename (the foreground process)
