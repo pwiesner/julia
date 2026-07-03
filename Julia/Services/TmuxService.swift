@@ -124,11 +124,15 @@ actor TmuxService {
     }
 
     /// Commands whose panes are worth inspecting for a Claude session.
-    /// Claude sometimes runs behind a "node" shim, so plain agent-command
-    /// matching misses it; the pane classifier returns nil for actual
-    /// node apps, so the extra captures cost a few spawns and nothing else.
+    /// Claude sometimes runs behind a "node" shim, and newer builds title
+    /// their process with a bare version string, so plain agent-command
+    /// matching misses both; the pane classifier returns nil for actual
+    /// node apps or other version-titled processes, so the extra captures
+    /// cost a few spawns and nothing else.
     private static func mayHostAgent(_ command: String?) -> Bool {
-        TmuxWindow.isAgentCommand(command) || command?.lowercased() == "node"
+        TmuxWindow.isAgentCommand(command)
+            || command?.lowercased() == "node"
+            || TmuxWindow.isVersionNumber(command)
     }
 
     /// Captures the given window's active pane and classifies any Claude

@@ -66,6 +66,13 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         return agentCommands.contains(command.lowercased())
     }
 
+    /// Claude Code (2.1+) sets its process title to a bare version string
+    /// like "2.1.191", so that's what tmux reports as the pane command.
+    static func isVersionNumber(_ command: String?) -> Bool {
+        guard let command else { return false }
+        return command.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil
+    }
+
     var isAgentRunning: Bool {
         Self.isAgentCommand(currentCommand) || agentActivity != nil
     }
@@ -117,7 +124,17 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     /// (since the project has been promoted to the title).
     var secondaryLabel: String? {
         if displayName == projectName {
-            currentCommand.map { $0.hasSuffix(".exe") ? String($0.dropLast(4)) : $0 }
+            currentCommand.map { command in
+                if Self.isVersionNumber(command), agentActivity != nil {
+                    // A classified Claude session whose process title is its
+                    // version number; show what it is, not "2.1.191".
+                    "claude"
+                } else if command.hasSuffix(".exe") {
+                    String(command.dropLast(4))
+                } else {
+                    command
+                }
+            }
         } else {
             projectName
         }

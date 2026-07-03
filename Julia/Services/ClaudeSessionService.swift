@@ -33,7 +33,33 @@ enum ClaudeSessionService {
         if footer.contains(where: { line in idleChromeMarkers.contains { line.contains($0) } }) {
             return .waitingForInput
         }
+        // Default permission mode draws none of the chrome markers when
+        // idle — the stable anchor left is the input box itself: a "❯"
+        // prompt line between two horizontal rules. (Checked after the
+        // spinner, which also renders above an input box while working.)
+        if hasInputPromptBox(footer) {
+            return .waitingForInput
+        }
         return nil
+    }
+
+    /// Detects Claude Code's input box: a line starting with "❯" enclosed
+    /// by full-width "─" rules. Anchoring on the enclosing rules keeps a
+    /// "❯" shell prompt in conversation text from matching.
+    private static func hasInputPromptBox(_ footer: [String]) -> Bool {
+        let ruleIndices = footer.indices.filter { isHorizontalRule(footer[$0]) }
+        for (above, below) in zip(ruleIndices, ruleIndices.dropFirst()) {
+            let between = footer[(above + 1)..<below]
+            if between.contains(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("❯") }) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static func isHorizontalRule(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.count >= 20 && trimmed.allSatisfy { $0 == "─" }
     }
 
     /// Matches the activity spinner: a glyph, a gerund, an ellipsis, then
