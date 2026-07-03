@@ -5,6 +5,7 @@ struct PaletteView: View {
     let onDismiss: () -> Void
 
     @FocusState private var isSearchFocused: Bool
+    @AppStorage("isSidebarVisible") private var isSidebarVisible = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -64,6 +65,19 @@ struct PaletteView: View {
 
     private var searchField: some View {
         HStack(spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isSidebarVisible.toggle()
+                }
+            } label: {
+                Label("Toggle sessions sidebar", systemImage: "sidebar.left")
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(isSidebarVisible ? .primary : .secondary)
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("b", modifiers: .command)
+            .help("Toggle sessions sidebar (⌘B)")
+
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
 
@@ -87,8 +101,11 @@ struct PaletteView: View {
 
     private var contentArea: some View {
         HStack(spacing: 0) {
-            sessionSidebar
-            Divider()
+            if isSidebarVisible {
+                sessionSidebar
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+                Divider()
+            }
             commandList
         }
     }
