@@ -21,6 +21,7 @@ final class PaletteViewModel {
     private let tmuxService = TmuxService()
     private let visitHistory = VisitHistoryService()
     private var previewTask: Task<Void, Never>?
+    private var loadGeneration = 0
 
     var placeholder: String {
         switch mode {
@@ -233,12 +234,33 @@ final class PaletteViewModel {
     func loadSessions() async {
         isLoading = true
         defer { isLoading = false }
+        loadGeneration += 1
+        let generation = loadGeneration
 
         do {
-            sessions = try await tmuxService.listSessions()
+            // Fast pass: sessions, windows, branches — two tmux spawns.
+            // The palette paints (and MRU-sorts) from this immediately.
+            let base = try await tmuxService.listSessions()
+            guard generation == loadGeneration else { return }
+            sessions = base
             errorMessage = nil
-            visitHistory.prune(keeping: Set(sessions.flatMap(\.windows).map(\.id)))
+            visitHistory.prune(keeping: Set(base.flatMap(\.windows).map(\.id)))
+
+            // Slow pass: agent-state pane captures, concurrent and off the
+            // critical path; glyphs appear when classification lands.
+            let activities = await tmuxService.agentActivities(in: base.flatMap(\.windows))
+            guard generation == loadGeneration, !activities.isEmpty else { return }
+            sessions = base.map { session in
+                var session = session
+                session.windows = session.windows.map { window in
+                    var window = window
+                    window.agentActivity = activities[window.id]
+                    return window
+                }
+                return session
+            }
         } catch {
+            guard generation == loadGeneration else { return }
             errorMessage = error.localizedDescription
             sessions = []
         }

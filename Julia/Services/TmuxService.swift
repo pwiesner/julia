@@ -65,12 +65,9 @@ actor TmuxService {
                 branchByPath[path, default: GitService.currentBranch(forDirectory: path)]
             }
             if let currentPath { branchByPath[currentPath] = gitBranch }
-            let agentActivity: ClaudeActivity? =
-                if Self.mayHostAgent(currentCommand) {
-                    await paneActivity(windowId: parts[2])
-                } else {
-                    nil
-                }
+            // Agent activity is deliberately NOT resolved here: it needs a
+            // pane capture per candidate window, which dominates load time
+            // on large servers. See agentActivities(in:).
             let window = TmuxWindow(
                 id: parts[2],
                 index: index,
@@ -80,8 +77,7 @@ actor TmuxService {
                 lastActivity: lastActivity,
                 currentPath: currentPath,
                 currentCommand: currentCommand,
-                gitBranch: gitBranch,
-                agentActivity: agentActivity
+                gitBranch: gitBranch
             )
             windowsBySessionId[sessionId, default: []].append(window)
         }
@@ -137,9 +133,37 @@ actor TmuxService {
 
     /// Captures the given window's active pane and classifies any Claude
     /// session found in it.
-    private func paneActivity(windowId: String) async -> ClaudeActivity? {
+    private nonisolated func paneActivity(windowId: String) async -> ClaudeActivity? {
         guard let text = try? await execute(["capture-pane", "-p", "-t", windowId]) else { return nil }
         return ClaudeSessionService.activity(fromPaneText: text)
+    }
+
+    /// Classifies agent state for every candidate window, a bounded number
+    /// of pane captures at a time. Kept separate from listSessions() so the
+    /// palette paints immediately; on servers with 100+ windows the dozens
+    /// of captures otherwise add whole seconds of latency.
+    nonisolated func agentActivities(in windows: [TmuxWindow]) async -> [String: ClaudeActivity] {
+        let candidates = windows.filter { Self.mayHostAgent($0.currentCommand) }.map(\.id)
+        guard !candidates.isEmpty else { return [:] }
+
+        var result: [String: ClaudeActivity] = [:]
+        await withTaskGroup(of: (String, ClaudeActivity?).self) { group in
+            var pending = candidates.makeIterator()
+            func addNext() -> Bool {
+                guard let id = pending.next() else { return false }
+                group.addTask { (id, await self.paneActivity(windowId: id)) }
+                return true
+            }
+            // Each capture briefly ties up a thread while tmux responds;
+            // keep the fan-out modest so the thread pool isn't starved.
+            var started = 0
+            while started < 6, addNext() { started += 1 }
+            for await (id, activity) in group {
+                if let activity { result[id] = activity }
+                _ = addNext()
+            }
+        }
+        return result
     }
 
     /// Snapshot of an active pane's visible state, including the actual
@@ -281,7 +305,11 @@ actor TmuxService {
 
     // MARK: - Private
 
-    private func execute(_ arguments: [String]) async throws -> String {
+    // Nonisolated so pane captures can run concurrently instead of
+    // serializing on the actor. The body only touches locals and the
+    // immutable tmuxPath. waitUntilExit blocks the calling thread, which is
+    // why callers bound their fan-out.
+    private nonisolated func execute(_ arguments: [String]) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: tmuxPath)

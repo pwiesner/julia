@@ -13,8 +13,10 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     let currentCommand: String?
     /// Checked-out branch of the repository at `currentPath`, if any.
     let gitBranch: String?
-    /// What the Claude session in this window's directory is doing, if known.
-    let agentActivity: ClaudeActivity?
+    /// What the Claude session in this window's directory is doing, if
+    /// known. Mutable because it's filled in by a second, slower pass after
+    /// the window list has already been shown.
+    var agentActivity: ClaudeActivity?
 
     init(
         id: String,
