@@ -1,6 +1,13 @@
 import AppKit
 import SwiftUI
 
+/// NSPanel refuses key status by default for borderless-style panels;
+/// a command palette must accept it so the search field gets keystrokes
+/// while the previously active app keeps focus (.nonactivatingPanel).
+private final class PalettePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 @MainActor
 final class PaletteWindowController {
     private var panel: NSPanel?
@@ -27,8 +34,10 @@ final class PaletteWindowController {
         self.hostingView = hostingView
 
         positionPanel()
+        // No NSApp.activate(): the nonactivating panel takes key status
+        // while the terminal stays the active app, so dismissing the
+        // palette leaves keyboard focus exactly where it was.
         panel.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
 
         setupClickOutsideMonitor()
     }
@@ -36,6 +45,11 @@ final class PaletteWindowController {
     func hide() {
         panel?.orderOut(nil)
         removeClickOutsideMonitor()
+        // If something did activate us (e.g. opening via the menu bar),
+        // step aside so focus returns to the previous app.
+        if NSApp.isActive {
+            NSApp.hide(nil)
+        }
     }
 
     func toggle<Content: View>(content: Content) {
@@ -47,7 +61,7 @@ final class PaletteWindowController {
     }
 
     private func createPanel() {
-        let panel = NSPanel(
+        let panel = PalettePanel(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 620),
             styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
             backing: .buffered,
