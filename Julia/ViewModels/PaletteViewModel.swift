@@ -69,10 +69,10 @@ final class PaletteViewModel {
         // show its windows, filtered by what comes after the colon.
         if let (session, windowFilter) = sessionDrillDown(query: query) {
             for window in session.windows {
-                if windowFilter.isEmpty || window.name.lowercased().contains(windowFilter) {
+                if window.matches(windowFilter) {
                     items.append(PaletteItem(
                         title: "\(session.name):\(window.index) \(window.name)",
-                        subtitle: "Window in \(session.name)",
+                        subtitle: Self.windowSubtitle(for: window, in: session),
                         icon: "macwindow",
                         action: .switchWindow(sessionName: session.name, windowIndex: window.index)
                     ))
@@ -94,10 +94,10 @@ final class PaletteViewModel {
 
             // Add matching windows
             for window in session.windows {
-                if query.isEmpty || window.name.lowercased().contains(query) {
+                if window.matches(query) {
                     items.append(PaletteItem(
                         title: "\(session.name):\(window.index) \(window.name)",
-                        subtitle: "Window in \(session.name)",
+                        subtitle: Self.windowSubtitle(for: window, in: session),
                         icon: "macwindow",
                         action: .switchWindow(sessionName: session.name, windowIndex: window.index)
                     ))
@@ -145,6 +145,14 @@ final class PaletteViewModel {
         return session.isAttached ? "\(windows) (attached)" : windows
     }
 
+    private static func windowSubtitle(for window: TmuxWindow, in session: TmuxSession) -> String {
+        if let project = window.projectName {
+            "\(project) · in \(session.name)"
+        } else {
+            "Window in \(session.name)"
+        }
+    }
+
     private var sessionPickerItems: [PaletteItem] {
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
         return sessions
@@ -165,10 +173,10 @@ final class PaletteViewModel {
         for session in sessions {
             for window in session.windows {
                 let title = "\(session.name):\(window.index) \(window.name)"
-                if query.isEmpty || title.lowercased().contains(query) {
+                if query.isEmpty || title.localizedStandardContains(query) || window.matches(query) {
                     items.append(PaletteItem(
                         title: title,
-                        subtitle: "Window in \(session.name)",
+                        subtitle: Self.windowSubtitle(for: window, in: session),
                         icon: "macwindow",
                         action: .switchWindow(sessionName: session.name, windowIndex: window.index)
                     ))

@@ -1,6 +1,15 @@
 import Foundation
 
 actor TmuxService {
+    /// Field separator for `-F` format strings. Window names and pane paths
+    /// can contain ":" (or nearly anything else printable), so fields need an
+    /// exotic separator. It must be a *printable* character: tmux escapes
+    /// non-printable bytes in format output (U+001F would arrive as the
+    /// literal text "\037"), so the ASCII unit separator itself is unusable.
+    /// U+241F (␟, "symbol for unit separator") passes through verbatim and
+    /// does not plausibly appear in session names, window names, or paths.
+    private static let fieldSeparator = "\u{241F}"
+
     private let tmuxPath: String
 
     init() {
@@ -15,17 +24,22 @@ actor TmuxService {
         // Two tmux calls regardless of session count: one for sessions,
         // one for ALL windows across ALL sessions. This is O(1) in tmux
         // process spawns and scales cleanly to hundreds of sessions/windows.
+        let sep = Self.fieldSeparator
         async let sessionsOutput = execute([
             "list-sessions",
             "-F",
-            "#{session_id}:#{session_name}:#{session_attached}:#{session_last_attached}"
+            ["#{session_id}", "#{session_name}", "#{session_attached}", "#{session_last_attached}", "#{session_created}"]
+                .joined(separator: sep)
         ])
 
+        // Pane fields resolve to the window's active pane.
         async let windowsOutput = execute([
             "list-windows",
             "-a",
             "-F",
-            "#{session_id}:#{session_name}:#{window_id}:#{window_index}:#{window_name}:#{window_active}:#{window_activity}"
+            ["#{session_id}", "#{session_name}", "#{window_id}", "#{window_index}", "#{window_name}",
+             "#{window_active}", "#{window_activity}", "#{pane_current_path}", "#{pane_current_command}"]
+                .joined(separator: sep)
         ])
 
         let (sessionsLines, windowsLines) = try await (sessionsOutput, windowsOutput)
@@ -34,8 +48,8 @@ actor TmuxService {
         // Bucket all windows by session id in one pass.
         var windowsBySessionId: [String: [TmuxWindow]] = [:]
         for line in windowsLines.components(separatedBy: "\n") where !line.isEmpty {
-            let parts = line.components(separatedBy: ":")
-            guard parts.count >= 7,
+            let parts = line.components(separatedBy: sep)
+            guard parts.count >= 9,
                   let index = Int(parts[3]) else { continue }
 
             let sessionId = parts[0]
@@ -49,15 +63,17 @@ actor TmuxService {
                 name: parts[4],
                 sessionName: parts[1],
                 isActive: parts[5] == "1",
-                lastActivity: lastActivity
+                lastActivity: lastActivity,
+                currentPath: parts[7].isEmpty ? nil : parts[7],
+                currentCommand: parts[8].isEmpty ? nil : parts[8]
             )
             windowsBySessionId[sessionId, default: []].append(window)
         }
 
         var sessions: [TmuxSession] = []
         for line in sessionsLines.components(separatedBy: "\n") where !line.isEmpty {
-            let parts = line.components(separatedBy: ":")
-            guard parts.count >= 4 else { continue }
+            let parts = line.components(separatedBy: sep)
+            guard parts.count >= 5 else { continue }
 
             let sessionId = parts[0]
             let sessionName = parts[1]
@@ -67,13 +83,18 @@ actor TmuxService {
                 guard let timestamp = TimeInterval(parts[3]), timestamp > 0 else { return nil }
                 return Date(timeIntervalSince1970: timestamp)
             }()
+            let created: Date? = {
+                guard let timestamp = TimeInterval(parts[4]), timestamp > 0 else { return nil }
+                return Date(timeIntervalSince1970: timestamp)
+            }()
 
             sessions.append(TmuxSession(
                 id: sessionId,
                 name: sessionName,
                 windows: windowsBySessionId[sessionId] ?? [],
                 isAttached: isAttached,
-                lastAttached: lastAttached
+                lastAttached: lastAttached,
+                created: created
             ))
         }
 

@@ -63,9 +63,17 @@ struct SessionRowView: View {
 
                     Spacer()
 
-                    Text("^[\(session.windows.count) window](inflect: true)")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text("^[\(session.windows.count) window](inflect: true)")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+
+                        if let created = session.created {
+                            Text("created \(created, format: .relative(presentation: .numeric, unitsStyle: .narrow))")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
@@ -113,10 +121,18 @@ struct WindowRowView: View {
                         }
                     }
 
-                    if let lastActivity = window.lastActivity {
-                        Text(lastActivity, format: .relative(presentation: .numeric, unitsStyle: .narrow))
-                            .font(.system(size: 9))
-                            .foregroundStyle(.tertiary)
+                    HStack(spacing: 4) {
+                        if let project = window.projectName {
+                            Text(project)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if let lastActivity = window.lastActivity {
+                            Text(lastActivity, format: .relative(presentation: .numeric, unitsStyle: .narrow))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                 }
 
@@ -138,8 +154,8 @@ struct WindowRowView: View {
                 id: "$0",
                 name: "dev",
                 windows: [
-                    TmuxWindow(id: "@0", index: 0, name: "nvim", sessionName: "dev", isActive: true),
-                    TmuxWindow(id: "@1", index: 1, name: "shell", sessionName: "dev"),
+                    TmuxWindow(id: "@0", index: 0, name: "nvim", sessionName: "dev", isActive: true, currentPath: "/Users/me/projects/julia", currentCommand: "nvim"),
+                    TmuxWindow(id: "@1", index: 1, name: "shell", sessionName: "dev", currentPath: "/Users/me/projects/julia", currentCommand: "zsh"),
                     TmuxWindow(id: "@2", index: 2, name: "logs", sessionName: "dev")
                 ],
                 isAttached: true
