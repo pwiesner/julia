@@ -27,7 +27,7 @@ struct SettingsView: View {
 
             Section("About") {
                 LabeledContent("Version") {
-                    Text("1.0")
+                    Text(appVersion)
                         .foregroundStyle(.secondary)
                 }
                 LabeledContent("tmux") {
@@ -75,6 +75,10 @@ struct SettingsView: View {
         hotkey = recorded
         recorded.save()
         hotkeyService?.update(hotkey: recorded)
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
 }
 
