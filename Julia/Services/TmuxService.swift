@@ -114,6 +114,12 @@ actor TmuxService {
             ))
         }
 
+        // tmux produced output but nothing parsed: something mangled the
+        // field separator. Fail loudly rather than showing an empty palette.
+        guard !sessions.isEmpty else {
+            throw TmuxError.executionFailed("Could not parse tmux output — unexpected format")
+        }
+
         return sessions
     }
 
@@ -276,6 +282,14 @@ actor TmuxService {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: tmuxPath)
             process.arguments = arguments
+
+            // Finder-launched apps get launchd's bare C-locale environment,
+            // under which tmux transliterates the multibyte field separator
+            // to "_" and every row fails parsing. Force UTF-8 so output is
+            // identical regardless of how the app was launched.
+            var environment = ProcessInfo.processInfo.environment
+            environment["LC_CTYPE"] = "en_US.UTF-8"
+            process.environment = environment
 
             let pipe = Pipe()
             let errorPipe = Pipe()
