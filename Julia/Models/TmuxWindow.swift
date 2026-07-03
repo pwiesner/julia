@@ -50,6 +50,42 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
     }
 
+    /// Foreground commands that indicate a coding agent is running in the pane.
+    private static let agentCommands: Set<String> = ["claude", "claude.exe", "codex", "aider", "gemini"]
+
+    var isAgentRunning: Bool {
+        guard let currentCommand else { return false }
+        return Self.agentCommands.contains(currentCommand.lowercased())
+    }
+
+    /// True when the name is tmux's automatic rename (the foreground process)
+    /// rather than something the user chose.
+    var hasAutomaticName: Bool {
+        name.isEmpty || name == currentCommand
+    }
+
+    /// Name to show in listings. Auto-generated names like "zsh" or
+    /// "claude.exe" say nothing about the window, so prefer the project
+    /// directory when there is one; user-chosen names win.
+    var displayName: String {
+        if hasAutomaticName, let projectName {
+            projectName
+        } else {
+            name.isEmpty ? (currentCommand ?? "?") : name
+        }
+    }
+
+    /// Context for the detail line, complementing `displayName`: the project
+    /// when the title is a user-chosen name, otherwise the foreground command
+    /// (since the project has been promoted to the title).
+    var secondaryLabel: String? {
+        if displayName == projectName {
+            currentCommand.map { $0.hasSuffix(".exe") ? String($0.dropLast(4)) : $0 }
+        } else {
+            projectName
+        }
+    }
+
     /// True if the window's name, project directory, path, or foreground
     /// command matches the query. Used for palette filtering.
     func matches(_ query: String) -> Bool {

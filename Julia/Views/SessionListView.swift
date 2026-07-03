@@ -105,13 +105,13 @@ struct WindowRowView: View {
                     .foregroundStyle(.tertiary)
                     .frame(width: 20, alignment: .trailing)
 
-                Image(systemName: "macwindow")
+                Image(systemName: window.isAgentRunning ? "sparkles" : "macwindow")
                     .font(.system(size: 10))
-                    .foregroundStyle(window.isActive ? .blue : .secondary)
+                    .foregroundStyle(window.isAgentRunning ? .orange : window.isActive ? .blue : .secondary)
 
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 4) {
-                        Text(window.name)
+                        Text(window.displayName)
                             .font(.system(size: 11))
 
                         if window.isActive {
@@ -122,8 +122,8 @@ struct WindowRowView: View {
                     }
 
                     HStack(spacing: 4) {
-                        if let project = window.projectName {
-                            Text(project)
+                        if let secondary = window.secondaryLabel {
+                            Text(secondary)
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundStyle(.secondary)
                         }

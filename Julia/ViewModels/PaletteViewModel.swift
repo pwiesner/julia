@@ -70,12 +70,7 @@ final class PaletteViewModel {
         if let (session, windowFilter) = sessionDrillDown(query: query) {
             for window in session.windows {
                 if window.matches(windowFilter) {
-                    items.append(PaletteItem(
-                        title: "\(session.name):\(window.index) \(window.name)",
-                        subtitle: Self.windowSubtitle(for: window, in: session),
-                        icon: "macwindow",
-                        action: .switchWindow(sessionName: session.name, windowIndex: window.index)
-                    ))
+                    items.append(Self.windowItem(for: window, in: session))
                 }
             }
             return items
@@ -95,12 +90,7 @@ final class PaletteViewModel {
             // Add matching windows
             for window in session.windows {
                 if window.matches(query) {
-                    items.append(PaletteItem(
-                        title: "\(session.name):\(window.index) \(window.name)",
-                        subtitle: Self.windowSubtitle(for: window, in: session),
-                        icon: "macwindow",
-                        action: .switchWindow(sessionName: session.name, windowIndex: window.index)
-                    ))
+                    items.append(Self.windowItem(for: window, in: session))
                 }
             }
         }
@@ -145,12 +135,18 @@ final class PaletteViewModel {
         return session.isAttached ? "\(windows) (attached)" : windows
     }
 
-    private static func windowSubtitle(for window: TmuxWindow, in session: TmuxSession) -> String {
-        if let project = window.projectName {
-            "\(project) · in \(session.name)"
+    private static func windowItem(for window: TmuxWindow, in session: TmuxSession) -> PaletteItem {
+        let subtitle = if let secondary = window.secondaryLabel {
+            "\(secondary) · in \(session.name)"
         } else {
             "Window in \(session.name)"
         }
+        return PaletteItem(
+            title: "\(session.name):\(window.index) \(window.displayName)",
+            subtitle: subtitle,
+            icon: window.isAgentRunning ? "sparkles" : "macwindow",
+            action: .switchWindow(sessionName: session.name, windowIndex: window.index)
+        )
     }
 
     private var sessionPickerItems: [PaletteItem] {
@@ -172,14 +168,9 @@ final class PaletteViewModel {
         var items: [PaletteItem] = []
         for session in sessions {
             for window in session.windows {
-                let title = "\(session.name):\(window.index) \(window.name)"
+                let title = "\(session.name):\(window.index) \(window.displayName)"
                 if query.isEmpty || title.localizedStandardContains(query) || window.matches(query) {
-                    items.append(PaletteItem(
-                        title: title,
-                        subtitle: Self.windowSubtitle(for: window, in: session),
-                        icon: "macwindow",
-                        action: .switchWindow(sessionName: session.name, windowIndex: window.index)
-                    ))
+                    items.append(Self.windowItem(for: window, in: session))
                 }
             }
         }
