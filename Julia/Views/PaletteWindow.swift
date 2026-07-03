@@ -38,6 +38,14 @@ final class PaletteWindowController {
         // while the terminal stays the active app, so dismissing the
         // palette leaves keyboard focus exactly where it was.
         panel.makeKeyAndOrderFront(nil)
+        // With the app inactive, the first makeKey can lose a race with the
+        // window server, leaving the panel visible but ignoring keyboard
+        // input until clicked. Re-assert on the next runloop tick.
+        Task { @MainActor in
+            if panel.isVisible, !panel.isKeyWindow {
+                panel.makeKey()
+            }
+        }
 
         setupClickOutsideMonitor()
     }
