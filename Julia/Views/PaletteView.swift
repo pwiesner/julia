@@ -250,27 +250,36 @@ struct PaletteView: View {
             sectionHeader("Preview")
 
             if let window = viewModel.selectedWindow, viewModel.previewContent != nil {
-                HStack(spacing: 8) {
-                    Text(window.displayName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(window.displayName)
+                            .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
 
-                    Text(previewMeta(for: window))
-                        .font(Design.rowSubtitleFont)
+                        Text(previewMeta(for: window))
+                            .font(Design.rowSubtitleFont)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+                        Spacer()
+
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(.green)
+                                .frame(width: 6, height: 6)
+                            Text("live")
+                        }
+                        .font(.system(size: 10))
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    Spacer()
-
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(.green)
-                            .frame(width: 6, height: 6)
-                        Text("live")
                     }
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+
+                    if let message = window.agentMessage {
+                        Text(message)
+                            .font(Design.rowSubtitleFont.italic())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 8)

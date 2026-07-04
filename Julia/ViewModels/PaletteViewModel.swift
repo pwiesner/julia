@@ -168,13 +168,16 @@ final class PaletteViewModel {
             .map { Self.windowItem(for: $0.window, in: $0.session) }
     }
 
-    /// All agents in three labeled sections: waiting on the user (longest
-    /// wait first — a queue to answer), working (most recently active
-    /// first), then idle sessions parked at a prompt for over a day.
+    /// All agents in labeled sections: blocked on permission first (they
+    /// have a task mid-flight), then waiting for a reply (longest wait
+    /// first), working, and idle sessions parked for over a day.
     private var agentOverviewItems: [PaletteItem] {
+        let permission = agentWindows
+            .filter { $0.window.agentActivity == .waitingForPermission && $0.window.isAwaitingUser }
+            .sorted { ($0.window.askedAt ?? .distantPast) < ($1.window.askedAt ?? .distantPast) }
         let waiting = agentWindows
-            .filter(\.window.isAwaitingUser)
-            .sorted { ($0.window.lastActivity ?? .distantPast) < ($1.window.lastActivity ?? .distantPast) }
+            .filter { $0.window.agentActivity == .waitingForInput && $0.window.isAwaitingUser }
+            .sorted { ($0.window.askedAt ?? .distantPast) < ($1.window.askedAt ?? .distantPast) }
         let working = agentWindows
             .filter { $0.window.agentActivity == .working }
             .sorted { ($0.window.lastActivity ?? .distantPast) > ($1.window.lastActivity ?? .distantPast) }
@@ -183,7 +186,8 @@ final class PaletteViewModel {
             .sorted { ($0.window.lastActivity ?? .distantPast) > ($1.window.lastActivity ?? .distantPast) }
 
         var items: [PaletteItem] = []
-        for group in [(title: "Needs you", members: waiting),
+        for group in [(title: "Needs permission", members: permission),
+                      (title: "Needs you", members: waiting),
                       (title: "Working", members: working),
                       (title: "Idle", members: idle)] {
             for (offset, entry) in group.members.enumerated() {
@@ -282,18 +286,20 @@ final class PaletteViewModel {
         // narrated for agents ("asked 9m ago") since their timestamps mean
         // something specific.
         let recency: String? = {
-            guard let lastActivity = window.lastActivity else { return nil }
-            let relative = lastActivity.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
+            guard let askedAt = window.askedAt else { return nil }
+            let relative = askedAt.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
             return switch window.agentActivity {
             case .working: "active now"
             case .waitingForInput: "asked \(relative)"
+            case .waitingForPermission: "blocked \(relative)"
             case nil: relative
             }
         }()
         let details = [
             window.secondaryLabel,
             window.gitBranch,
-            recency
+            recency,
+            window.agentMessage
         ].compactMap(\.self)
         return PaletteItem(
             title: "\(session.name):\(window.index) \(window.displayName)",
@@ -354,15 +360,19 @@ final class PaletteViewModel {
             errorMessage = nil
             visitHistory.prune(keeping: Set(base.flatMap(\.windows).map(\.id) + base.map(\.id)))
 
-            // Slow pass: agent-state pane captures, concurrent and off the
-            // critical path; glyphs appear when classification lands.
-            let activities = await tmuxService.agentActivities(in: base.flatMap(\.windows))
-            guard generation == loadGeneration, !activities.isEmpty else { return }
+            // Slow pass: agent states (beeper first, pane captures as
+            // fallback), off the critical path; glyphs appear when
+            // classification lands.
+            let statuses = await tmuxService.agentActivities(in: base.flatMap(\.windows))
+            guard generation == loadGeneration, !statuses.isEmpty else { return }
             sessions = base.map { session in
                 var session = session
                 session.windows = session.windows.map { window in
                     var window = window
-                    window.agentActivity = activities[window.id]
+                    let status = statuses[window.id]
+                    window.agentActivity = status?.activity
+                    window.agentMessage = status?.message
+                    window.agentSince = status?.since
                     return window
                 }
                 return session

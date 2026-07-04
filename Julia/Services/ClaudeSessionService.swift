@@ -25,7 +25,7 @@ enum ClaudeSessionService {
             .map { $0.lowercased() }
 
         if footer.contains(where: { $0.contains("do you want to proceed") }) {
-            return .waitingForInput
+            return .waitingForPermission
         }
         if footer.contains(where: { $0.contains("esc to interrupt") || isSpinnerLine($0) }) {
             return .working

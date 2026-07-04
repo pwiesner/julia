@@ -163,6 +163,15 @@ actor TmuxService {
         return ClaudeSessionService.activity(fromPaneText: text)
     }
 
+    /// A window's agent classification, with whatever context the source
+    /// provides: beeper-backed entries carry the exact ask time and the
+    /// notification text; scraped entries have only the activity.
+    struct AgentStatus: Sendable, Equatable {
+        var activity: ClaudeActivity
+        var message: String?
+        var since: Date?
+    }
+
     /// Classifies agent state for every candidate window. Sessions that
     /// report through beeper hooks are authoritative — exact state, mapped
     /// to their window by pane id, no scraping. Windows without beeper
@@ -170,8 +179,8 @@ actor TmuxService {
     /// a time. Kept separate from listSessions() so the palette paints
     /// immediately; on servers with 100+ windows the captures otherwise
     /// add whole seconds of latency.
-    nonisolated func agentActivities(in windows: [TmuxWindow]) async -> [String: ClaudeActivity] {
-        var result: [String: ClaudeActivity] = [:]
+    nonisolated func agentActivities(in windows: [TmuxWindow]) async -> [String: AgentStatus] {
+        var result: [String: AgentStatus] = [:]
 
         // Pane ids are never reused within a tmux server's lifetime, so a
         // stale state file (session died without SessionEnd) simply maps
@@ -179,7 +188,16 @@ actor TmuxService {
         if let paneMap = try? await paneWindowMap() {
             for session in BeeperStore.sessions() {
                 guard let pane = session.tmuxPane, let windowId = paneMap[pane] else { continue }
-                result[windowId] = session.state == .working ? .working : .waitingForInput
+                let activity: ClaudeActivity = switch session.state {
+                case .working: .working
+                case .waitingForInput: .waitingForInput
+                case .waitingForPermission: .waitingForPermission
+                }
+                result[windowId] = AgentStatus(
+                    activity: activity,
+                    message: session.message,
+                    since: session.since
+                )
             }
         }
 
@@ -199,7 +217,7 @@ actor TmuxService {
             var started = 0
             while started < 6, addNext() { started += 1 }
             for await (id, activity) in group {
-                if let activity { result[id] = activity }
+                if let activity { result[id] = AgentStatus(activity: activity) }
                 _ = addNext()
             }
         }

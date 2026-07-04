@@ -21,6 +21,12 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     /// known. Mutable because it's filled in by a second, slower pass after
     /// the window list has already been shown.
     var agentActivity: ClaudeActivity?
+    /// The agent's notification text (e.g. the permission request), when
+    /// its session reports through beeper.
+    var agentMessage: String?
+    /// Exactly when the agent entered its current state, when known —
+    /// truer than pane activity, which any output can freshen.
+    var agentSince: Date?
 
     init(
         id: String,
@@ -89,16 +95,23 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     /// genuinely waiting on the user; beyond this it's just idle.
     static let waitingFreshnessLimit: TimeInterval = 24 * 60 * 60
 
-    /// Claude asked for input recently enough that an answer is plausibly
-    /// wanted. Sessions left at a prompt for days are idle, not waiting.
+    /// When the agent's current ask began: exact when beeper reports it,
+    /// otherwise approximated by the pane's last output.
+    var askedAt: Date? {
+        agentSince ?? lastActivity
+    }
+
+    /// Claude asked for input or permission recently enough that an answer
+    /// is plausibly wanted. Sessions parked for days are idle, not waiting.
     var isAwaitingUser: Bool {
-        guard agentActivity == .waitingForInput else { return false }
-        guard let lastActivity else { return true }
-        return Date.now.timeIntervalSince(lastActivity) < Self.waitingFreshnessLimit
+        guard let agentActivity, agentActivity != .working else { return false }
+        guard let askedAt else { return true }
+        return Date.now.timeIntervalSince(askedAt) < Self.waitingFreshnessLimit
     }
 
     var isIdleAgent: Bool {
-        agentActivity == .waitingForInput && !isAwaitingUser
+        guard let agentActivity, agentActivity != .working else { return false }
+        return !isAwaitingUser
     }
 
     /// Untouched for over a day; listings render these dimmed so live work
@@ -114,16 +127,18 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         switch agentActivity {
         case .working: "working"
         case .waitingForInput: isAwaitingUser ? "your turn" : "idle"
+        case .waitingForPermission: isAwaitingUser ? "needs permission" : "idle"
         case nil: nil
         }
     }
 
-    /// SF Symbol for agent windows: a filled speech bubble when Claude is
-    /// freshly waiting on the user, an outline once it's gone idle,
-    /// sparkles otherwise. Nil for non-agent windows.
+    /// SF Symbol for agent windows: a lock while blocked on permission, a
+    /// filled speech bubble when freshly waiting on the user, an outline
+    /// once it's gone idle, sparkles otherwise. Nil for non-agent windows.
     var agentGlyph: String? {
         guard isAgentRunning else { return nil }
         return switch agentActivity {
+        case .waitingForPermission: isAwaitingUser ? "lock.fill" : "bubble.left"
         case .waitingForInput: isAwaitingUser ? "bubble.left.fill" : "bubble.left"
         default: "sparkles"
         }
@@ -132,6 +147,7 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     var agentGlyphColor: Color? {
         switch agentActivity {
         case .working: .orange
+        case .waitingForPermission: isAwaitingUser ? .red : .secondary
         case .waitingForInput: isAwaitingUser ? .blue : .secondary
         case nil: isAgentRunning ? .orange : nil
         }

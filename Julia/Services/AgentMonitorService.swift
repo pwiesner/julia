@@ -88,19 +88,26 @@ final class AgentMonitorService {
         }
         seenAt = seenAt.filter { key, _ in windows.contains { $0.id == key } }
 
-        let activities = await tmuxService.agentActivities(in: windows)
+        let statuses = await tmuxService.agentActivities(in: windows)
         waitingWindows = windows
             .compactMap { window -> TmuxWindow? in
-                guard activities[window.id] == .waitingForInput else { return nil }
+                guard let status = statuses[window.id], status.activity != .working else { return nil }
                 var window = window
-                window.agentActivity = .waitingForInput
+                window.agentActivity = status.activity
+                window.agentMessage = status.message
+                window.agentSince = status.since
                 // Day-old prompts are idle, not waiting; don't badge them.
                 guard window.isAwaitingUser else { return nil }
                 // Already seen since it asked — the user knows.
-                let asked = window.lastActivity ?? .distantPast
-                guard asked > (seenAt[window.id] ?? .distantPast) else { return nil }
+                guard (window.askedAt ?? .distantPast) > (seenAt[window.id] ?? .distantPast) else { return nil }
                 return window
             }
-            .sorted { ($0.lastActivity ?? .distantPast) < ($1.lastActivity ?? .distantPast) }
+            .sorted { a, b in
+                // Permission blocks a running task; those come first.
+                let aBlocked = a.agentActivity == .waitingForPermission
+                let bBlocked = b.agentActivity == .waitingForPermission
+                if aBlocked != bBlocked { return aBlocked }
+                return (a.askedAt ?? .distantPast) < (b.askedAt ?? .distantPast)
+            }
     }
 }
