@@ -2,19 +2,25 @@ import Foundation
 import Observation
 
 /// Watches agent state in the background so julia can signal without being
-/// asked: the menu bar badge shows how many Claudes are waiting, and the
-/// jump hotkey goes straight to the one that has waited longest.
+/// asked: the menu bar badge shows how many Claudes are waiting unseen,
+/// and the jump hotkey walks through them.
+///
+/// "Waiting" alone would badge forever — a Claude at rest is always at a
+/// prompt, and visiting it doesn't change that. The badge therefore uses
+/// unread semantics: an agent counts until the user has *looked* at it
+/// (jumped there, or had it as the current window) since it last asked.
 @MainActor
 @Observable
 final class AgentMonitorService {
-    /// Freshly-waiting agent windows, longest wait first.
+    /// Waiting agent windows the user hasn't seen yet, longest wait first.
     private(set) var waitingWindows: [TmuxWindow] = []
 
     var waitingCount: Int { waitingWindows.count }
 
     private let tmuxService = TmuxService()
     private var monitorTask: Task<Void, Never>?
-    private var lastJumpedWindowId: String?
+    /// When the user last looked at each window, keyed by window id.
+    private var seenAt: [String: Date] = [:]
     private static let scanInterval: Duration = .seconds(30)
 
     func start() {
@@ -32,23 +38,15 @@ final class AgentMonitorService {
         monitorTask = nil
     }
 
-    /// Switches to the agent that has been waiting on the user longest;
-    /// pressed again, walks the queue. Jumping doesn't clear an agent's
-    /// waiting state (answering does, and the scan is 30s behind anyway),
-    /// so repeat presses must cycle rather than re-target the same window.
+    /// Switches to the unseen agent that has been waiting longest and marks
+    /// it seen — the badge decrements immediately, and the next press
+    /// naturally moves to the next one in the queue.
     func jumpToLongestWaiting() {
-        guard !waitingWindows.isEmpty else { return }
+        guard let target = waitingWindows.first(where: { !$0.isCurrent }) ?? waitingWindows.first
+        else { return }
 
-        let target: TmuxWindow
-        if let last = lastJumpedWindowId,
-           let index = waitingWindows.firstIndex(where: { $0.id == last }) {
-            target = waitingWindows[(index + 1) % waitingWindows.count]
-        } else {
-            // First press: the longest-waiting agent, unless the user is
-            // already staring at it.
-            target = waitingWindows.first { !$0.isCurrent } ?? waitingWindows[0]
-        }
-        lastJumpedWindowId = target.id
+        seenAt[target.id] = .now
+        waitingWindows.removeAll { $0.id == target.id }
 
         Task {
             try? await tmuxService.switchToWindow(
@@ -64,6 +62,13 @@ final class AgentMonitorService {
             return
         }
         let windows = sessions.flatMap(\.windows)
+
+        // Being on a window counts as seeing whatever it was asking.
+        for window in windows where window.isCurrent {
+            seenAt[window.id] = .now
+        }
+        seenAt = seenAt.filter { key, _ in windows.contains { $0.id == key } }
+
         let activities = await tmuxService.agentActivities(in: windows)
         waitingWindows = windows
             .compactMap { window -> TmuxWindow? in
@@ -71,7 +76,11 @@ final class AgentMonitorService {
                 var window = window
                 window.agentActivity = .waitingForInput
                 // Day-old prompts are idle, not waiting; don't badge them.
-                return window.isAwaitingUser ? window : nil
+                guard window.isAwaitingUser else { return nil }
+                // Already seen since it asked — the user knows.
+                let asked = window.lastActivity ?? .distantPast
+                guard asked > (seenAt[window.id] ?? .distantPast) else { return nil }
+                return window
             }
             .sorted { ($0.lastActivity ?? .distantPast) < ($1.lastActivity ?? .distantPast) }
     }
