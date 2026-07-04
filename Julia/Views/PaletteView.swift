@@ -34,6 +34,17 @@ struct PaletteView: View {
             isSearchFocused = true
             viewModel.refresh()
         }
+        .task {
+            // Focus requested in onAppear can race the panel becoming key
+            // and silently not stick — the palette then eats keystrokes
+            // instead of typing into the search field. Re-assert once the
+            // window has settled; the false→true cycle forces SwiftUI to
+            // re-apply focus even though the value was already true.
+            try? await Task.sleep(for: .milliseconds(120))
+            isSearchFocused = false
+            try? await Task.sleep(for: .milliseconds(1))
+            isSearchFocused = true
+        }
         .onKeyPress(.tab) {
             viewModel.toggleBrowseList()
             return .handled
