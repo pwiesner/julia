@@ -14,6 +14,7 @@ final class AgentMonitorService {
 
     private let tmuxService = TmuxService()
     private var monitorTask: Task<Void, Never>?
+    private var lastJumpedWindowId: String?
     private static let scanInterval: Duration = .seconds(30)
 
     func start() {
@@ -31,10 +32,24 @@ final class AgentMonitorService {
         monitorTask = nil
     }
 
-    /// Switches to the agent that has been waiting on the user longest.
-    /// No-op when nothing is waiting.
+    /// Switches to the agent that has been waiting on the user longest;
+    /// pressed again, walks the queue. Jumping doesn't clear an agent's
+    /// waiting state (answering does, and the scan is 30s behind anyway),
+    /// so repeat presses must cycle rather than re-target the same window.
     func jumpToLongestWaiting() {
-        guard let target = waitingWindows.first else { return }
+        guard !waitingWindows.isEmpty else { return }
+
+        let target: TmuxWindow
+        if let last = lastJumpedWindowId,
+           let index = waitingWindows.firstIndex(where: { $0.id == last }) {
+            target = waitingWindows[(index + 1) % waitingWindows.count]
+        } else {
+            // First press: the longest-waiting agent, unless the user is
+            // already staring at it.
+            target = waitingWindows.first { !$0.isCurrent } ?? waitingWindows[0]
+        }
+        lastJumpedWindowId = target.id
+
         Task {
             try? await tmuxService.switchToWindow(
                 sessionName: target.sessionName,
