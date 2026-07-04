@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var recordingSlot: HotkeyService.Slot?
     @State private var recordingMonitor: Any?
     @AppStorage(PaletteAppearance.defaultsKey) private var appearanceRaw = PaletteAppearance.dark.rawValue
+    @AppStorage(NotificationMode.defaultsKey) private var notificationModeRaw = NotificationMode.permissionRequests.rawValue
 
     var body: some View {
         Form {
@@ -20,6 +21,19 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+            }
+
+            Section("Notifications") {
+                Picker("Notify when agents wait", selection: $notificationModeRaw) {
+                    ForEach(NotificationMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text("Permission requests block a running task; \"All waits\" also notifies whenever an agent finishes and wants a reply.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Keyboard Shortcuts") {

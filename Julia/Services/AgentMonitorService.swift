@@ -18,12 +18,17 @@ final class AgentMonitorService {
 
     var waitingCount: Int { waitingWindows.count }
 
+    /// Set by the app so waits can become system notifications.
+    var notifications: NotificationService?
+
     private let tmuxService = TmuxService()
     private let beeperMonitor = BeeperMonitor()
     private var monitorTask: Task<Void, Never>?
     private var beeperTask: Task<Void, Never>?
     /// When the user last looked at each window, keyed by window id.
     private var seenAt: [String: Date] = [:]
+    /// The ask each window was last notified about, to notify once per ask.
+    private var notifiedAskAt: [String: Date] = [:]
     /// Fallback cadence for sessions not reporting through beeper hooks;
     /// hook-reporting sessions update the instant their state changes.
     private static let scanInterval: Duration = .seconds(30)
@@ -109,5 +114,55 @@ final class AgentMonitorService {
                 if aBlocked != bBlocked { return aBlocked }
                 return (a.askedAt ?? .distantPast) < (b.askedAt ?? .distantPast)
             }
+
+        postNotifications()
+    }
+
+    /// One notification per ask, honoring the user's notification mode;
+    /// answered or seen windows get their banners withdrawn.
+    private func postNotifications() {
+        guard let notifications else { return }
+        let mode = NotificationMode.saved
+
+        if mode != .off {
+            for window in waitingWindows {
+                if mode == .permissionRequests && window.agentActivity != .waitingForPermission {
+                    continue
+                }
+                let asked = window.askedAt ?? .distantPast
+                guard notifiedAskAt[window.id] != asked else { continue }
+                notifiedAskAt[window.id] = asked
+
+                let fallback = window.agentActivity == .waitingForPermission
+                    ? "Needs permission to run a tool"
+                    : "Waiting for your reply"
+                notifications.notify(
+                    windowId: window.id,
+                    title: window.displayName,
+                    body: window.agentMessage ?? fallback,
+                    sessionName: window.sessionName,
+                    windowIndex: window.index
+                )
+            }
+        }
+
+        let stillWaiting = Set(waitingWindows.map(\.id))
+        let resolved = notifiedAskAt.keys.filter { !stillWaiting.contains($0) }
+        if !resolved.isEmpty {
+            notifications.withdraw(windowIds: resolved)
+            for id in resolved {
+                notifiedAskAt[id] = nil
+            }
+        }
+    }
+
+    /// Switches to a specific window, e.g. from a clicked notification.
+    func jump(toSession sessionName: String, windowIndex: Int) {
+        Task {
+            try? await tmuxService.switchToWindow(
+                sessionName: sessionName,
+                windowIndex: windowIndex
+            )
+        }
     }
 }

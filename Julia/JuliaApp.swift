@@ -6,6 +6,7 @@ struct JuliaApp: App {
     @State private var paletteController = PaletteWindowController()
     @State private var hotkeyService = HotkeyService()
     @State private var agentMonitor = AgentMonitorService()
+    @State private var notificationService = NotificationService()
 
     @Environment(\.openSettings) private var openSettings
 
@@ -42,6 +43,11 @@ struct JuliaApp: App {
             hotkeyService.register(.jumpToAgent, hotkey: .savedJumpToAgent) { [self] in
                 jumpToWaitingAgent()
             }
+            notificationService.onJump = { [agentMonitor] sessionName, windowIndex in
+                agentMonitor.jump(toSession: sessionName, windowIndex: windowIndex)
+            }
+            notificationService.activate()
+            agentMonitor.notifications = notificationService
             agentMonitor.start()
         }
     }
