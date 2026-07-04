@@ -168,10 +168,9 @@ final class PaletteViewModel {
             .map { Self.windowItem(for: $0.window, in: $0.session) }
     }
 
-    /// The actionable agents only, in two labeled sections: waiting on the
-    /// user (longest wait first — a queue to answer), then working (most
-    /// recently active first). Idle and unclassified agents are excluded;
-    /// they're findable in the windows list.
+    /// All agents in three labeled sections: waiting on the user (longest
+    /// wait first — a queue to answer), working (most recently active
+    /// first), then idle sessions parked at a prompt for over a day.
     private var agentOverviewItems: [PaletteItem] {
         let waiting = agentWindows
             .filter(\.window.isAwaitingUser)
@@ -179,21 +178,21 @@ final class PaletteViewModel {
         let working = agentWindows
             .filter { $0.window.agentActivity == .working }
             .sorted { ($0.window.lastActivity ?? .distantPast) > ($1.window.lastActivity ?? .distantPast) }
+        let idle = agentWindows
+            .filter(\.window.isIdleAgent)
+            .sorted { ($0.window.lastActivity ?? .distantPast) > ($1.window.lastActivity ?? .distantPast) }
 
         var items: [PaletteItem] = []
-        for (offset, entry) in waiting.enumerated() {
-            var item = Self.windowItem(for: entry.window, in: entry.session)
-            if offset == 0 {
-                item.sectionTitle = "Needs you (\(waiting.count))"
+        for group in [(title: "Needs you", members: waiting),
+                      (title: "Working", members: working),
+                      (title: "Idle", members: idle)] {
+            for (offset, entry) in group.members.enumerated() {
+                var item = Self.windowItem(for: entry.window, in: entry.session)
+                if offset == 0 {
+                    item.sectionTitle = "\(group.title) (\(group.members.count))"
+                }
+                items.append(item)
             }
-            items.append(item)
-        }
-        for (offset, entry) in working.enumerated() {
-            var item = Self.windowItem(for: entry.window, in: entry.session)
-            if offset == 0 {
-                item.sectionTitle = "Working (\(working.count))"
-            }
-            items.append(item)
         }
         return items
     }
@@ -204,12 +203,9 @@ final class PaletteViewModel {
         }
     }
 
-    /// Header for the actions column; in agents mode it notes how many
-    /// idle agents the triage view is hiding.
+    /// Header for the actions column.
     var listHeader: String {
-        guard mode == .browsing, browseList == .agents else { return "Actions" }
-        let idle = agentWindows.count(where: \.window.isIdleAgent)
-        return idle > 0 ? "Agents · \(idle) idle hidden" : "Agents"
+        mode == .browsing && browseList == .agents ? "Agents" : "Actions"
     }
 
     /// True when agents mode has nothing actionable to show.
