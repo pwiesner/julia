@@ -1,3 +1,4 @@
+import BeeperKit
 import Foundation
 import Observation
 
@@ -18,9 +19,13 @@ final class AgentMonitorService {
     var waitingCount: Int { waitingWindows.count }
 
     private let tmuxService = TmuxService()
+    private let beeperMonitor = BeeperMonitor()
     private var monitorTask: Task<Void, Never>?
+    private var beeperTask: Task<Void, Never>?
     /// When the user last looked at each window, keyed by window id.
     private var seenAt: [String: Date] = [:]
+    /// Fallback cadence for sessions not reporting through beeper hooks;
+    /// hook-reporting sessions update the instant their state changes.
     private static let scanInterval: Duration = .seconds(30)
 
     func start() {
@@ -31,11 +36,25 @@ final class AgentMonitorService {
                 try? await Task.sleep(for: Self.scanInterval)
             }
         }
+
+        try? beeperMonitor.start()
+        beeperTask = Task { [weak self] in
+            guard let changes = self?.beeperMonitor.changes else { return }
+            for await _ in changes {
+                // Hooks fire in quick bursts (Stop right after PostToolUse);
+                // let them settle before rescanning.
+                try? await Task.sleep(for: .milliseconds(200))
+                await self?.scan()
+            }
+        }
     }
 
     func stop() {
         monitorTask?.cancel()
         monitorTask = nil
+        beeperTask?.cancel()
+        beeperTask = nil
+        beeperMonitor.stop()
     }
 
     /// Switches to the unseen agent that has been waiting longest and marks

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		5D9013A42F87367900EA39F5 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 5D9013A32F87367900EA39F5 /* SwiftTerm */; };
+		E01000031 /* BeeperKit in Frameworks */ = {isa = PBXBuildFile; productRef = E0A000002 /* BeeperKit */; };
 		E01000001 /* JuliaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000001 /* JuliaApp.swift */; };
 		E01000002 /* TmuxSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000002 /* TmuxSession.swift */; };
 		E01000003 /* TmuxWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000003 /* TmuxWindow.swift */; };
@@ -68,6 +69,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5D9013A42F87367900EA39F5 /* SwiftTerm in Frameworks */,
+				E01000031 /* BeeperKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -200,6 +202,7 @@
 			mainGroup = E04000001;
 			packageReferences = (
 				5D9013A22F87367900EA39F5 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+				E0A000001 /* XCLocalSwiftPackageReference "../beeper" */,
 			);
 			productRefGroup = E04000006 /* Products */;
 			projectDirPath = "";
@@ -453,6 +456,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		E0A000001 /* XCLocalSwiftPackageReference "../beeper" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../beeper";
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		5D9013A22F87367900EA39F5 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -465,6 +475,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		E0A000002 /* BeeperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BeeperKit;
+		};
 		5D9013A32F87367900EA39F5 /* SwiftTerm */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 5D9013A22F87367900EA39F5 /* XCRemoteSwiftPackageReference "SwiftTerm" */;

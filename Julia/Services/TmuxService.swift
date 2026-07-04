@@ -1,3 +1,4 @@
+import BeeperKit
 import Foundation
 
 actor TmuxService {
@@ -138,6 +139,23 @@ actor TmuxService {
             || TmuxWindow.isVersionNumber(command)
     }
 
+    /// Maps every pane id to its window id, for resolving beeper sessions
+    /// (which record their $TMUX_PANE) to windows.
+    private nonisolated func paneWindowMap() async throws -> [String: String] {
+        let sep = Self.fieldSeparator
+        let output = try await execute([
+            "list-panes", "-a", "-F",
+            ["#{pane_id}", "#{window_id}"].joined(separator: sep)
+        ])
+        var map: [String: String] = [:]
+        for line in output.components(separatedBy: "\n") where !line.isEmpty {
+            let parts = line.components(separatedBy: sep)
+            guard parts.count >= 2 else { continue }
+            map[parts[0]] = parts[1]
+        }
+        return map
+    }
+
     /// Captures the given window's active pane and classifies any Claude
     /// session found in it.
     private nonisolated func paneActivity(windowId: String) async -> ClaudeActivity? {
@@ -145,15 +163,30 @@ actor TmuxService {
         return ClaudeSessionService.activity(fromPaneText: text)
     }
 
-    /// Classifies agent state for every candidate window, a bounded number
-    /// of pane captures at a time. Kept separate from listSessions() so the
-    /// palette paints immediately; on servers with 100+ windows the dozens
-    /// of captures otherwise add whole seconds of latency.
+    /// Classifies agent state for every candidate window. Sessions that
+    /// report through beeper hooks are authoritative — exact state, mapped
+    /// to their window by pane id, no scraping. Windows without beeper
+    /// data fall back to pane-capture classification, a bounded number at
+    /// a time. Kept separate from listSessions() so the palette paints
+    /// immediately; on servers with 100+ windows the captures otherwise
+    /// add whole seconds of latency.
     nonisolated func agentActivities(in windows: [TmuxWindow]) async -> [String: ClaudeActivity] {
-        let candidates = windows.filter { Self.mayHostAgent($0.currentCommand) }.map(\.id)
-        guard !candidates.isEmpty else { return [:] }
-
         var result: [String: ClaudeActivity] = [:]
+
+        // Pane ids are never reused within a tmux server's lifetime, so a
+        // stale state file (session died without SessionEnd) simply maps
+        // to no live pane and drops out.
+        if let paneMap = try? await paneWindowMap() {
+            for session in BeeperStore.sessions() {
+                guard let pane = session.tmuxPane, let windowId = paneMap[pane] else { continue }
+                result[windowId] = session.state == .working ? .working : .waitingForInput
+            }
+        }
+
+        let candidates = windows
+            .filter { result[$0.id] == nil && Self.mayHostAgent($0.currentCommand) }
+            .map(\.id)
+        guard !candidates.isEmpty else { return result }
         await withTaskGroup(of: (String, ClaudeActivity?).self) { group in
             var pending = candidates.makeIterator()
             func addNext() -> Bool {
