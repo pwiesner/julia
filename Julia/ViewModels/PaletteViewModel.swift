@@ -267,11 +267,22 @@ final class PaletteViewModel {
 
     private static func windowItem(for window: TmuxWindow, in session: TmuxSession) -> PaletteItem {
         // The session is already in the title prefix and the glyph carries
-        // agent state, so the subtitle holds process, branch, and recency.
+        // agent state, so the subtitle holds process, branch, and recency —
+        // narrated for agents ("asked 9m ago") since their timestamps mean
+        // something specific.
+        let recency: String? = {
+            guard let lastActivity = window.lastActivity else { return nil }
+            let relative = lastActivity.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
+            return switch window.agentActivity {
+            case .working: "active now"
+            case .waitingForInput: "asked \(relative)"
+            case nil: relative
+            }
+        }()
         let details = [
             window.secondaryLabel,
             window.gitBranch,
-            window.lastActivity?.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
+            recency
         ].compactMap(\.self)
         return PaletteItem(
             title: "\(session.name):\(window.index) \(window.displayName)",
