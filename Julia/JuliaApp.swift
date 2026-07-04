@@ -5,6 +5,7 @@ struct JuliaApp: App {
     @State private var viewModel = PaletteViewModel()
     @State private var paletteController = PaletteWindowController()
     @State private var hotkeyService = HotkeyService()
+    @State private var agentMonitor = AgentMonitorService()
 
     @Environment(\.openSettings) private var openSettings
 
@@ -12,11 +13,12 @@ struct JuliaApp: App {
         MenuBarExtra {
             MenuBarView(
                 onShowPalette: showPalette,
+                onJumpToAgent: jumpToWaitingAgent,
                 onOpenSettings: openSettingsInFront,
                 onQuit: { NSApp.terminate(nil) }
             )
         } label: {
-            Image(systemName: "terminal")
+            MenuBarLabel(monitor: agentMonitor)
         }
         .menuBarExtraStyle(.menu)
 
@@ -34,7 +36,16 @@ struct JuliaApp: App {
             hotkeyService.register(.togglePalette, hotkey: .savedPalette) { [self] in
                 togglePalette()
             }
+            hotkeyService.register(.jumpToAgent, hotkey: .savedJumpToAgent) { [self] in
+                jumpToWaitingAgent()
+            }
+            agentMonitor.start()
         }
+    }
+
+    private func jumpToWaitingAgent() {
+        paletteController.hide()
+        agentMonitor.jumpToLongestWaiting()
     }
 
     private func showPalette() {
@@ -66,6 +77,7 @@ struct JuliaApp: App {
 
 struct MenuBarView: View {
     let onShowPalette: () -> Void
+    let onJumpToAgent: () -> Void
     let onOpenSettings: () -> Void
     let onQuit: () -> Void
 
@@ -74,6 +86,11 @@ struct MenuBarView: View {
             onShowPalette()
         }
         .keyboardShortcut(Hotkey.savedPalette.keyboardShortcut)
+
+        Button("Jump to Waiting Agent") {
+            onJumpToAgent()
+        }
+        .keyboardShortcut(Hotkey.savedJumpToAgent.keyboardShortcut)
 
         Divider()
 

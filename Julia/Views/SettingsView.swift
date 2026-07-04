@@ -6,6 +6,7 @@ struct SettingsView: View {
     let hotkeyService: HotkeyService?
 
     @State private var paletteHotkey = Hotkey.savedPalette
+    @State private var jumpHotkey = Hotkey.savedJumpToAgent
     @State private var recordingSlot: HotkeyService.Slot?
     @State private var recordingMonitor: Any?
     @AppStorage(PaletteAppearance.defaultsKey) private var appearanceRaw = PaletteAppearance.dark.rawValue
@@ -23,6 +24,7 @@ struct SettingsView: View {
 
             Section("Keyboard Shortcuts") {
                 recorderRow("Toggle Palette", slot: .togglePalette, current: paletteHotkey)
+                recorderRow("Jump to Waiting Agent", slot: .jumpToAgent, current: jumpHotkey)
 
                 Text("Click, then press the new combination. It needs at least one of ⌘, ⌥, or ⌃.")
                     .font(.callout)
@@ -93,7 +95,11 @@ struct SettingsView: View {
             paletteHotkey = recorded
             recorded.save(Hotkey.paletteDefaultsKey)
             hotkeyService?.update(.togglePalette, hotkey: recorded)
-        case .jumpToAgent, nil:
+        case .jumpToAgent:
+            jumpHotkey = recorded
+            recorded.save(Hotkey.jumpToAgentDefaultsKey)
+            hotkeyService?.update(.jumpToAgent, hotkey: recorded)
+        case nil:
             break
         }
     }
