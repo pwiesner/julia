@@ -27,11 +27,16 @@ struct PaletteView: View {
         }
         .onAppear {
             viewModel.mode = .browsing
+            viewModel.browseList = .windows
             viewModel.searchText = ""
             viewModel.selectedIndex = 0
             viewModel.previewContent = nil
             isSearchFocused = true
             viewModel.refresh()
+        }
+        .onKeyPress(.tab) {
+            viewModel.toggleBrowseList()
+            return .handled
         }
         .onChange(of: viewModel.selectedIndex) { _, _ in
             viewModel.updatePreview()
@@ -179,7 +184,7 @@ struct PaletteView: View {
 
     private var commandList: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("Actions")
+            sectionHeader(viewModel.listHeader)
 
             ScrollViewReader { proxy in
                 ScrollView {

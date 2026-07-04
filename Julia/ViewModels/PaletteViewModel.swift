@@ -10,12 +10,21 @@ final class PaletteViewModel {
         case enteringInput(command: TmuxCommandType, target: String)
     }
 
+    /// What the empty-query browsing list shows; tab flips between them.
+    enum BrowseList {
+        case windows
+        /// Agent windows only: waiting on the user first (longest wait at
+        /// the top), then working.
+        case agents
+    }
+
     var searchText = ""
     var sessions: [TmuxSession] = []
     var selectedIndex = 0
     var errorMessage: String?
     var isLoading = false
     var mode: Mode = .browsing
+    var browseList: BrowseList = .windows
     var previewContent: TmuxService.PaneCapture?
 
     private let tmuxService = TmuxService()
@@ -26,7 +35,9 @@ final class PaletteViewModel {
     var placeholder: String {
         switch mode {
         case .browsing:
-            "Search sessions, windows, or commands..."
+            browseList == .agents
+                ? "Agents — tab for windows"
+                : "Search sessions, windows, or commands..."
         case .selectingTarget(let command):
             switch command {
             case .renameWindow:
@@ -81,8 +92,12 @@ final class PaletteViewModel {
         // Empty query: the palette's job is jumping, so windows come first
         // in frecency order — the working set assembles at the top and
         // row 0 (preselected) is the previous window, making hotkey+return
-        // an instant toggle. Sessions (also by frecency) and commands follow.
+        // an instant toggle. Tab flips to the agents overview. Sessions
+        // (also by frecency) and commands follow in windows mode.
         if query.isEmpty {
+            if browseList == .agents {
+                return agentOverviewItems
+            }
             items.append(contentsOf: recentWindowItems)
             items.append(contentsOf: frecentSessionItems)
             addAllCommands(to: &items)
@@ -152,6 +167,43 @@ final class PaletteViewModel {
                 return a.tier != b.tier ? a.tier < b.tier : a.value > b.value
             }
             .map { Self.windowItem(for: $0.window, in: $0.session) }
+    }
+
+    /// Every window with an agent, triaged: waiting on the user first with
+    /// the longest wait at the top (a queue to answer), then working ones
+    /// by most recent activity, then agents not yet classified.
+    private var agentOverviewItems: [PaletteItem] {
+        agentWindows
+            .sorted {
+                let a = Self.agentRank($0.window)
+                let b = Self.agentRank($1.window)
+                return a.tier != b.tier ? a.tier < b.tier : a.value < b.value
+            }
+            .map { Self.windowItem(for: $0.window, in: $0.session) }
+    }
+
+    private var agentWindows: [(session: TmuxSession, window: TmuxWindow)] {
+        sessions.flatMap { session in
+            session.windows.filter(\.isAgentRunning).map { (session, $0) }
+        }
+    }
+
+    private static func agentRank(_ window: TmuxWindow) -> (tier: Int, value: TimeInterval) {
+        let activity = window.lastActivity?.timeIntervalSince1970 ?? 0
+        return switch window.agentActivity {
+        case .waitingForInput: (0, activity)   // oldest ask first
+        case .working: (1, -activity)          // most recently active first
+        case nil: (2, -activity)
+        }
+    }
+
+    /// Header for the actions column, with triage counts in agents mode.
+    var listHeader: String {
+        guard mode == .browsing, browseList == .agents else { return "Actions" }
+        let windows = agentWindows.map(\.window)
+        let waiting = windows.count { $0.agentActivity == .waitingForInput }
+        let working = windows.count { $0.agentActivity == .working }
+        return "Agents · \(waiting) need you · \(working) working"
     }
 
     /// All sessions ranked for flipping: visited sessions by frecency, then
@@ -334,6 +386,14 @@ final class PaletteViewModel {
                 self.previewContent = nil
             }
         }
+    }
+
+    /// Flips the empty-query list between windows and sessions.
+    func toggleBrowseList() {
+        guard mode == .browsing, searchText.isEmpty else { return }
+        browseList = browseList == .windows ? .agents : .windows
+        selectedIndex = 0
+        updatePreview()
     }
 
     func selectNext() {
