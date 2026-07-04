@@ -191,9 +191,10 @@ final class PaletteViewModel {
     private static func agentRank(_ window: TmuxWindow) -> (tier: Int, value: TimeInterval) {
         let activity = window.lastActivity?.timeIntervalSince1970 ?? 0
         return switch window.agentActivity {
-        case .waitingForInput: (0, activity)   // oldest ask first
+        case .waitingForInput where window.isAwaitingUser: (0, activity) // oldest ask first
         case .working: (1, -activity)          // most recently active first
-        case nil: (2, -activity)
+        case .waitingForInput: (2, -activity)  // idle: waiting for over a day
+        case nil: (3, -activity)
         }
     }
 
@@ -201,9 +202,14 @@ final class PaletteViewModel {
     var listHeader: String {
         guard mode == .browsing, browseList == .agents else { return "Actions" }
         let windows = agentWindows.map(\.window)
-        let waiting = windows.count { $0.agentActivity == .waitingForInput }
+        let waiting = windows.count(where: \.isAwaitingUser)
         let working = windows.count { $0.agentActivity == .working }
-        return "Agents · \(waiting) need you · \(working) working"
+        let idle = windows.count(where: \.isIdleAgent)
+        var header = "Agents · \(waiting) need you · \(working) working"
+        if idle > 0 {
+            header += " · \(idle) idle"
+        }
+        return header
     }
 
     /// All sessions ranked for flipping: visited sessions by frecency, then

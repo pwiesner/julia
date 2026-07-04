@@ -79,27 +79,47 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         Self.isAgentCommand(currentCommand) || agentActivity != nil
     }
 
+    /// How recently a waiting session must have been active to count as
+    /// genuinely waiting on the user; beyond this it's just idle.
+    static let waitingFreshnessLimit: TimeInterval = 24 * 60 * 60
+
+    /// Claude asked for input recently enough that an answer is plausibly
+    /// wanted. Sessions left at a prompt for days are idle, not waiting.
+    var isAwaitingUser: Bool {
+        guard agentActivity == .waitingForInput else { return false }
+        guard let lastActivity else { return true }
+        return Date.now.timeIntervalSince(lastActivity) < Self.waitingFreshnessLimit
+    }
+
+    var isIdleAgent: Bool {
+        agentActivity == .waitingForInput && !isAwaitingUser
+    }
+
     /// Short label for the agent's state; the glyph shape shows it visually,
     /// this names it for VoiceOver.
     var agentStatusText: String? {
         switch agentActivity {
         case .working: "working"
-        case .waitingForInput: "your turn"
+        case .waitingForInput: isAwaitingUser ? "your turn" : "idle"
         case nil: nil
         }
     }
 
-    /// SF Symbol for agent windows: a speech bubble when Claude is waiting
-    /// on the user, sparkles otherwise. Nil for non-agent windows.
+    /// SF Symbol for agent windows: a filled speech bubble when Claude is
+    /// freshly waiting on the user, an outline once it's gone idle,
+    /// sparkles otherwise. Nil for non-agent windows.
     var agentGlyph: String? {
         guard isAgentRunning else { return nil }
-        return agentActivity == .waitingForInput ? "bubble.left.fill" : "sparkles"
+        return switch agentActivity {
+        case .waitingForInput: isAwaitingUser ? "bubble.left.fill" : "bubble.left"
+        default: "sparkles"
+        }
     }
 
     var agentGlyphColor: Color? {
         switch agentActivity {
         case .working: .orange
-        case .waitingForInput: .blue
+        case .waitingForInput: isAwaitingUser ? .blue : .secondary
         case nil: isAgentRunning ? .orange : nil
         }
     }
