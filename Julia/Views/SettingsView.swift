@@ -8,9 +8,19 @@ struct SettingsView: View {
     @State private var hotkey = Hotkey.saved
     @State private var isRecording = false
     @State private var recordingMonitor: Any?
+    @AppStorage(PaletteAppearance.defaultsKey) private var appearanceRaw = PaletteAppearance.dark.rawValue
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Palette theme", selection: $appearanceRaw) {
+                    ForEach(PaletteAppearance.allCases) { appearance in
+                        Text(appearance.label).tag(appearance.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
             Section("Keyboard Shortcut") {
                 LabeledContent("Toggle Palette") {
                     Button(action: toggleRecording) {

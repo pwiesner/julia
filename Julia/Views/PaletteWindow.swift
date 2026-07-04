@@ -25,6 +25,10 @@ final class PaletteWindowController {
 
         guard let panel else { return }
 
+        // Applied on every show so a change in Settings takes effect on
+        // the next open without a restart.
+        panel.appearance = PaletteAppearance.saved.nsAppearance
+
         let hostingView = NSHostingView(rootView: AnyView(content))
         hostingView.frame = panel.contentView?.bounds ?? .zero
         hostingView.autoresizingMask = [.width, .height]

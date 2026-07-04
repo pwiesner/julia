@@ -18,6 +18,7 @@
 		E01000023 /* VisitHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000023 /* VisitHistoryService.swift */; };
 		E01000024 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000024 /* Design.swift */; };
 		E01000025 /* Hotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000025 /* Hotkey.swift */; };
+		E01000027 /* PaletteAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000027 /* PaletteAppearance.swift */; };
 		E01000026 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000026 /* SettingsView.swift */; };
 		E01000022 /* ClaudeActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000022 /* ClaudeActivity.swift */; };
 		E01000006 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000006 /* HotkeyService.swift */; };
@@ -41,6 +42,7 @@
 		E02000023 /* VisitHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitHistoryService.swift; sourceTree = "<group>"; };
 		E02000024 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
 		E02000025 /* Hotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hotkey.swift; sourceTree = "<group>"; };
+		E02000027 /* PaletteAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteAppearance.swift; sourceTree = "<group>"; };
 		E02000026 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		E02000022 /* ClaudeActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeActivity.swift; sourceTree = "<group>"; };
 		E02000006 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
@@ -99,6 +101,7 @@
 				E02000003 /* TmuxWindow.swift */,
 				E02000022 /* ClaudeActivity.swift */,
 				E02000025 /* Hotkey.swift */,
+				E02000027 /* PaletteAppearance.swift */,
 				E02000004 /* TmuxCommand.swift */,
 			);
 			path = Models;
@@ -227,6 +230,7 @@
 				E01000023 /* VisitHistoryService.swift in Sources */,
 				E01000024 /* Design.swift in Sources */,
 				E01000025 /* Hotkey.swift in Sources */,
+				E01000027 /* PaletteAppearance.swift in Sources */,
 				E01000026 /* SettingsView.swift in Sources */,
 				E01000022 /* ClaudeActivity.swift in Sources */,
 				E01000006 /* HotkeyService.swift in Sources */,
