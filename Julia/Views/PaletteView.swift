@@ -249,6 +249,22 @@ struct PaletteView: View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader("Preview")
 
+            if let window = viewModel.selectedWindow, viewModel.previewContent != nil {
+                HStack(spacing: 8) {
+                    Text(window.displayName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+
+                    Text(previewMeta(for: window))
+                        .font(Design.rowSubtitleFont)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 8)
+            }
+
             Group {
                 if let capture = viewModel.previewContent {
                     TerminalPreviewView(capture: capture)
@@ -268,6 +284,20 @@ struct PaletteView: View {
             .padding(.bottom, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// "~/projects/julia · ⎇ main"-style context line for the preview.
+    private func previewMeta(for window: TmuxWindow) -> String {
+        var parts: [String] = []
+        if let path = window.currentPath {
+            let home = FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false)
+            let trimmedHome = home.hasSuffix("/") ? String(home.dropLast()) : home
+            parts.append(path.hasPrefix(trimmedHome) ? "~" + path.dropFirst(trimmedHome.count) : path)
+        }
+        if let branch = window.gitBranch {
+            parts.append("⎇ \(branch)")
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func errorBanner(_ message: String) -> some View {

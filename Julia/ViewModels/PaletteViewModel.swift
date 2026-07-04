@@ -208,6 +208,17 @@ final class PaletteViewModel {
         mode == .browsing && browseList == .agents ? "Agents" : "Actions"
     }
 
+    /// The window behind the currently selected row, if the selection is a
+    /// window — drives the preview pane's header.
+    var selectedWindow: TmuxWindow? {
+        let items = filteredItems
+        guard selectedIndex < items.count,
+              case .switchWindow(let sessionName, let windowIndex) = items[selectedIndex].action
+        else { return nil }
+        return sessions.first { $0.name == sessionName }?
+            .windows.first { $0.index == windowIndex }
+    }
+
     /// True when agents mode has nothing actionable to show.
     var isAgentListEmpty: Bool {
         mode == .browsing && browseList == .agents
