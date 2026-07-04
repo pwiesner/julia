@@ -65,19 +65,29 @@ struct Hotkey: Codable, Equatable {
 
     // MARK: - Persistence
 
-    private static let defaultsKey = "globalHotkey"
+    static let paletteDefaultsKey = "globalHotkey"
+    static let jumpToAgentDefaultsKey = "jumpToAgentHotkey"
 
-    static var saved: Hotkey {
-        guard let data = UserDefaults.standard.data(forKey: defaultsKey),
+    static let jumpToAgentDefault = Hotkey(
+        keyCode: UInt32(kVK_ANSI_J),
+        carbonModifiers: UInt32(cmdKey | optionKey),
+        key: "J"
+    )
+
+    static func saved(_ key: String, defaultingTo fallback: Hotkey) -> Hotkey {
+        guard let data = UserDefaults.standard.data(forKey: key),
               let hotkey = try? JSONDecoder().decode(Hotkey.self, from: data) else {
-            return .default
+            return fallback
         }
         return hotkey
     }
 
-    func save() {
+    static var savedPalette: Hotkey { saved(paletteDefaultsKey, defaultingTo: .default) }
+    static var savedJumpToAgent: Hotkey { saved(jumpToAgentDefaultsKey, defaultingTo: .jumpToAgentDefault) }
+
+    func save(_ key: String) {
         if let data = try? JSONEncoder().encode(self) {
-            UserDefaults.standard.set(data, forKey: Self.defaultsKey)
+            UserDefaults.standard.set(data, forKey: key)
         }
     }
 }

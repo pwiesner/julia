@@ -5,8 +5,8 @@ import SwiftUI
 struct SettingsView: View {
     let hotkeyService: HotkeyService?
 
-    @State private var hotkey = Hotkey.saved
-    @State private var isRecording = false
+    @State private var paletteHotkey = Hotkey.savedPalette
+    @State private var recordingSlot: HotkeyService.Slot?
     @State private var recordingMonitor: Any?
     @AppStorage(PaletteAppearance.defaultsKey) private var appearanceRaw = PaletteAppearance.dark.rawValue
 
@@ -21,14 +21,8 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
             }
 
-            Section("Keyboard Shortcut") {
-                LabeledContent("Toggle Palette") {
-                    Button(action: toggleRecording) {
-                        Text(isRecording ? "Type shortcut… (esc cancels)" : hotkey.displayString)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(minWidth: 160)
-                    }
-                }
+            Section("Keyboard Shortcuts") {
+                recorderRow("Toggle Palette", slot: .togglePalette, current: paletteHotkey)
 
                 Text("Click, then press the new combination. It needs at least one of ⌘, ⌥, or ⌃.")
                     .font(.callout)
@@ -51,16 +45,28 @@ struct SettingsView: View {
         .onDisappear(perform: stopRecording)
     }
 
-    private func toggleRecording() {
-        if isRecording {
-            stopRecording()
-        } else {
-            startRecording()
+    private func recorderRow(_ title: String, slot: HotkeyService.Slot, current: Hotkey) -> some View {
+        LabeledContent(title) {
+            Button {
+                toggleRecording(for: slot)
+            } label: {
+                Text(recordingSlot == slot ? "Type shortcut… (esc cancels)" : current.displayString)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minWidth: 160)
+            }
         }
     }
 
-    private func startRecording() {
-        isRecording = true
+    private func toggleRecording(for slot: HotkeyService.Slot) {
+        let wasRecording = recordingSlot == slot
+        stopRecording()
+        if !wasRecording {
+            startRecording(for: slot)
+        }
+    }
+
+    private func startRecording(for slot: HotkeyService.Slot) {
+        recordingSlot = slot
         recordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.keyCode == UInt16(kVK_Escape) {
                 stopRecording()
@@ -74,7 +80,7 @@ struct SettingsView: View {
     }
 
     private func stopRecording() {
-        isRecording = false
+        recordingSlot = nil
         if let recordingMonitor {
             NSEvent.removeMonitor(recordingMonitor)
             self.recordingMonitor = nil
@@ -82,9 +88,14 @@ struct SettingsView: View {
     }
 
     private func apply(_ recorded: Hotkey) {
-        hotkey = recorded
-        recorded.save()
-        hotkeyService?.update(hotkey: recorded)
+        switch recordingSlot {
+        case .togglePalette:
+            paletteHotkey = recorded
+            recorded.save(Hotkey.paletteDefaultsKey)
+            hotkeyService?.update(.togglePalette, hotkey: recorded)
+        case .jumpToAgent, nil:
+            break
+        }
     }
 
     private var appVersion: String {

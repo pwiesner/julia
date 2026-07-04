@@ -31,7 +31,7 @@ struct JuliaApp: App {
 
     private func setupHotkey() {
         Task { @MainActor in
-            hotkeyService.register(hotkey: .saved) { [self] in
+            hotkeyService.register(.togglePalette, hotkey: .savedPalette) { [self] in
                 togglePalette()
             }
         }
@@ -73,7 +73,7 @@ struct MenuBarView: View {
         Button("Show Palette") {
             onShowPalette()
         }
-        .keyboardShortcut(Hotkey.saved.keyboardShortcut)
+        .keyboardShortcut(Hotkey.savedPalette.keyboardShortcut)
 
         Divider()
 
