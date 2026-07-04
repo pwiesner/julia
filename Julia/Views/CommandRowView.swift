@@ -9,13 +9,16 @@ struct CommandRowView: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // When selected, the chip flips to solid white so the glyph can
+            // keep its state color — a blue "waiting" bubble must stay blue
+            // on the blue selection, not wash out to white.
             RoundedRectangle(cornerRadius: Design.chipCornerRadius)
-                .fill(isSelected ? AnyShapeStyle(.white.opacity(0.2)) : AnyShapeStyle(.primary.opacity(0.06)))
+                .fill(isSelected ? AnyShapeStyle(.white.opacity(0.9)) : AnyShapeStyle(.primary.opacity(0.06)))
                 .frame(width: Design.iconChipSize, height: Design.iconChipSize)
                 .overlay {
                     Image(systemName: item.icon)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(isSelected ? .white : (item.iconColor ?? .secondary))
+                        .foregroundStyle(iconStyle)
                 }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -50,6 +53,16 @@ struct CommandRowView: View {
         }
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
+    }
+
+    private var iconStyle: AnyShapeStyle {
+        if let color = item.iconColor {
+            AnyShapeStyle(color)
+        } else if isSelected {
+            AnyShapeStyle(Color.accentColor)
+        } else {
+            AnyShapeStyle(.secondary)
+        }
     }
 
     private var rowFill: AnyShapeStyle {
