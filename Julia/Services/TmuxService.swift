@@ -42,7 +42,13 @@ actor TmuxService {
                 .joined(separator: sep)
         ])
 
+        // The window the user's client is on. window_active can't answer
+        // this: every attached session has an "active" window. Errors (no
+        // client at all) just mean no window is current.
+        async let currentWindowOutput = execute(["display-message", "-p", "#{window_id}"])
+
         let (sessionsLines, windowsLines) = try await (sessionsOutput, windowsOutput)
+        let currentWindowId = (try? await currentWindowOutput) ?? ""
         guard !sessionsLines.isEmpty else { return [] }
 
         // Bucket all windows by session id in one pass. Branch lookups are
@@ -74,6 +80,7 @@ actor TmuxService {
                 name: parts[4],
                 sessionName: parts[1],
                 isActive: parts[5] == "1",
+                isCurrent: parts[2] == currentWindowId,
                 lastActivity: lastActivity,
                 currentPath: currentPath,
                 currentCommand: currentCommand,

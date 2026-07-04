@@ -147,11 +147,10 @@ final class PaletteViewModel {
         let all = sessions.flatMap { session in
             session.windows.map { (session: session, window: $0) }
         }
-        let currentId = all.first { $0.session.isAttached && $0.window.isActive }?.window.id
         let now = Date.now
 
         func rank(_ window: TmuxWindow) -> (tier: Int, value: Double) {
-            if window.id == currentId {
+            if window.isCurrent {
                 (2, 0)
             } else if let score = visitHistory.score(id: window.id, now: now) {
                 (0, score)

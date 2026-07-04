@@ -6,6 +6,10 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     let name: String
     let sessionName: String
     let isActive: Bool
+    /// True only for the window the user's client is actually on. Distinct
+    /// from `isActive`, which every session's frontmost window reports —
+    /// with several sessions attached that's several windows.
+    let isCurrent: Bool
     let lastActivity: Date?
     /// Working directory of the window's active pane.
     let currentPath: String?
@@ -24,6 +28,7 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         name: String,
         sessionName: String,
         isActive: Bool = false,
+        isCurrent: Bool = false,
         lastActivity: Date? = nil,
         currentPath: String? = nil,
         currentCommand: String? = nil,
@@ -35,6 +40,7 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         self.name = name
         self.sessionName = sessionName
         self.isActive = isActive
+        self.isCurrent = isCurrent
         self.lastActivity = lastActivity
         self.currentPath = currentPath
         self.currentCommand = currentCommand
