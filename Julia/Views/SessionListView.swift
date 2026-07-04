@@ -137,6 +137,7 @@ struct WindowRowView: View {
             .padding(.vertical, 3)
             .padding(.leading, 32)
             .padding(.trailing, 6)
+            .opacity(window.isStale ? 0.55 : 1)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

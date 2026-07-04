@@ -51,6 +51,7 @@ struct CommandRowView: View {
             RoundedRectangle(cornerRadius: Design.rowCornerRadius)
                 .fill(rowFill)
         }
+        .opacity(item.isStale && !isSelected && !isHovered ? 0.5 : 1)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
     }

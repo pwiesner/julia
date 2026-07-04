@@ -101,6 +101,13 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         agentActivity == .waitingForInput && !isAwaitingUser
     }
 
+    /// Untouched for over a day; listings render these dimmed so live work
+    /// stands out.
+    var isStale: Bool {
+        guard let lastActivity else { return false }
+        return Date.now.timeIntervalSince(lastActivity) > Self.waitingFreshnessLimit
+    }
+
     /// Short label for the agent's state; the glyph shape shows it visually,
     /// this names it for VoiceOver.
     var agentStatusText: String? {

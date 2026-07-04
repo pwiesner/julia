@@ -109,6 +109,8 @@ struct PaletteItem: Identifiable, Sendable {
     var iconColor: Color? = nil
     /// When set, a section header with this title renders above the row.
     var sectionTitle: String? = nil
+    /// Stale rows render dimmed until hovered or selected.
+    var isStale: Bool = false
     let action: PaletteAction
 
     enum PaletteAction: Sendable {

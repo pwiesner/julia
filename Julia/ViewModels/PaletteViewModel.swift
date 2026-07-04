@@ -289,6 +289,7 @@ final class PaletteViewModel {
             subtitle: details.isEmpty ? nil : details.joined(separator: " · "),
             icon: window.agentGlyph ?? "macwindow",
             iconColor: window.agentGlyphColor,
+            isStale: window.isStale,
             action: .switchWindow(sessionName: session.name, windowIndex: window.index)
         )
     }
