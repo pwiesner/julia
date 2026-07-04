@@ -1,30 +1,56 @@
 import Foundation
 
-/// Remembers when the user last jumped to each tmux window so the palette
-/// can order windows by working set (visit recency) rather than
-/// session/index order. Only jumps made through Julia are seen; switches
-/// done with native tmux bindings don't update the history.
+/// Remembers when the user jumped to each tmux window or session so the
+/// palette can order by frecency — recent visits weigh most, but a window
+/// visited constantly all day outranks one visited once an hour ago. Only
+/// jumps made through Julia are seen; native tmux switches don't update
+/// the history.
 @MainActor
 final class VisitHistoryService {
-    private static let defaultsKey = "windowVisitHistory"
-    private var visits: [String: Date]
+    private static let defaultsKey = "visitHistory.v2"
+    private static let legacyKey = "windowVisitHistory"
+    private static let maxVisitsPerItem = 20
+    /// A visit's contribution to the frecency score halves every 24 hours.
+    private static let halfLife: TimeInterval = 24 * 60 * 60
+
+    /// Visit timestamps keyed by tmux id. Window ids ("@5") and session
+    /// ids ("$3") share the dictionary; tmux keeps the namespaces distinct.
+    private var visits: [String: [Date]]
 
     init() {
-        let data = UserDefaults.standard.data(forKey: Self.defaultsKey)
-        visits = data.flatMap { try? JSONDecoder().decode([String: Date].self, from: $0) } ?? [:]
+        let defaults = UserDefaults.standard
+        if let data = defaults.data(forKey: Self.defaultsKey),
+           let decoded = try? JSONDecoder().decode([String: [Date]].self, from: data) {
+            visits = decoded
+        } else if let data = defaults.data(forKey: Self.legacyKey),
+                  let legacy = try? JSONDecoder().decode([String: Date].self, from: data) {
+            // Pre-frecency format stored only the latest visit.
+            visits = legacy.mapValues { [$0] }
+        } else {
+            visits = [:]
+        }
     }
 
-    func recordVisit(windowId: String) {
-        visits[windowId] = .now
+    func recordVisit(id: String) {
+        var dates = visits[id, default: []]
+        dates.append(.now)
+        if dates.count > Self.maxVisitsPerItem {
+            dates.removeFirst(dates.count - Self.maxVisitsPerItem)
+        }
+        visits[id] = dates
         save()
     }
 
-    func lastVisit(windowId: String) -> Date? {
-        visits[windowId]
+    /// Exponentially decayed visit count; nil if never visited.
+    func score(id: String, now: Date = .now) -> Double? {
+        guard let dates = visits[id], !dates.isEmpty else { return nil }
+        return dates.reduce(0) { total, date in
+            total + pow(2, -now.timeIntervalSince(date) / Self.halfLife)
+        }
     }
 
-    /// Window ids reset when the tmux server restarts; drop entries for
-    /// windows that no longer exist.
+    /// Ids reset when the tmux server restarts; drop entries for windows
+    /// and sessions that no longer exist.
     func prune(keeping ids: Set<String>) {
         let pruned = visits.filter { ids.contains($0.key) }
         if pruned.count != visits.count {

@@ -79,19 +79,12 @@ final class PaletteViewModel {
         }
 
         // Empty query: the palette's job is jumping, so windows come first
-        // in visit-recency order — the working set assembles at the top and
+        // in frecency order — the working set assembles at the top and
         // row 0 (preselected) is the previous window, making hotkey+return
-        // an instant toggle. Sessions and commands follow.
+        // an instant toggle. Sessions (also by frecency) and commands follow.
         if query.isEmpty {
             items.append(contentsOf: recentWindowItems)
-            for session in sessions {
-                items.append(PaletteItem(
-                    title: session.name,
-                    subtitle: Self.sessionSubtitle(for: session),
-                    icon: "terminal",
-                    action: .switchSession(session.name)
-                ))
-            }
+            items.append(contentsOf: frecentSessionItems)
             addAllCommands(to: &items)
             return items
         }
@@ -132,22 +125,23 @@ final class PaletteViewModel {
         return items
     }
 
-    /// All windows in working-set order: previously visited windows by
-    /// visit recency, then unvisited ones by tmux activity, with the
-    /// window the user is sitting in last — the palette exists to leave it.
+    /// All windows in working-set order: visited windows by frecency, then
+    /// unvisited ones by tmux activity, with the window the user is
+    /// sitting in last — the palette exists to leave it.
     private var recentWindowItems: [PaletteItem] {
         let all = sessions.flatMap { session in
             session.windows.map { (session: session, window: $0) }
         }
         let currentId = all.first { $0.session.isAttached && $0.window.isActive }?.window.id
+        let now = Date.now
 
-        func rank(_ window: TmuxWindow) -> (tier: Int, date: Date) {
+        func rank(_ window: TmuxWindow) -> (tier: Int, value: Double) {
             if window.id == currentId {
-                (2, .distantPast)
-            } else if let visit = visitHistory.lastVisit(windowId: window.id) {
-                (0, visit)
+                (2, 0)
+            } else if let score = visitHistory.score(id: window.id, now: now) {
+                (0, score)
             } else {
-                (1, window.lastActivity ?? .distantPast)
+                (1, window.lastActivity?.timeIntervalSince1970 ?? 0)
             }
         }
 
@@ -155,9 +149,40 @@ final class PaletteViewModel {
             .sorted {
                 let a = rank($0.window)
                 let b = rank($1.window)
-                return a.tier != b.tier ? a.tier < b.tier : a.date > b.date
+                return a.tier != b.tier ? a.tier < b.tier : a.value > b.value
             }
             .map { Self.windowItem(for: $0.window, in: $0.session) }
+    }
+
+    /// All sessions ranked for flipping: visited sessions by frecency, then
+    /// the rest by last attach time, with the attached session last.
+    private var frecentSessionItems: [PaletteItem] {
+        let now = Date.now
+
+        func rank(_ session: TmuxSession) -> (tier: Int, value: Double) {
+            if session.isAttached {
+                (2, 0)
+            } else if let score = visitHistory.score(id: session.id, now: now) {
+                (0, score)
+            } else {
+                (1, session.lastAttached?.timeIntervalSince1970 ?? 0)
+            }
+        }
+
+        return sessions
+            .sorted {
+                let a = rank($0)
+                let b = rank($1)
+                return a.tier != b.tier ? a.tier < b.tier : a.value > b.value
+            }
+            .map { session in
+                PaletteItem(
+                    title: session.name,
+                    subtitle: Self.sessionSubtitle(for: session),
+                    icon: "terminal",
+                    action: .switchSession(session.name)
+                )
+            }
     }
 
     /// Detects "<session>:<filter>" syntax and returns the matched session
@@ -244,7 +269,7 @@ final class PaletteViewModel {
             guard generation == loadGeneration else { return }
             sessions = base
             errorMessage = nil
-            visitHistory.prune(keeping: Set(base.flatMap(\.windows).map(\.id)))
+            visitHistory.prune(keeping: Set(base.flatMap(\.windows).map(\.id) + base.map(\.id)))
 
             // Slow pass: agent-state pane captures, concurrent and off the
             // critical path; glyphs appear when classification lands.
@@ -266,12 +291,20 @@ final class PaletteViewModel {
         }
     }
 
-    /// Resolves a window's stable tmux id and records the jump. Ids survive
-    /// renames and moves, which "session:index" keys would not.
+    /// Resolves stable tmux ids and records the jump against both the
+    /// window and its session — window activity is session activity. Ids
+    /// survive renames and moves, which "session:index" keys would not.
     private func recordWindowVisit(session: String, windowIndex: Int) {
-        guard let id = sessions.first(where: { $0.name == session })?
-            .windows.first(where: { $0.index == windowIndex })?.id else { return }
-        visitHistory.recordVisit(windowId: id)
+        guard let session = sessions.first(where: { $0.name == session }) else { return }
+        visitHistory.recordVisit(id: session.id)
+        if let windowId = session.windows.first(where: { $0.index == windowIndex })?.id {
+            visitHistory.recordVisit(id: windowId)
+        }
+    }
+
+    private func recordSessionVisit(named name: String) {
+        guard let id = sessions.first(where: { $0.name == name })?.id else { return }
+        visitHistory.recordVisit(id: id)
     }
 
     /// Refreshes `previewContent` based on the current selection. If the
@@ -390,6 +423,7 @@ final class PaletteViewModel {
     func switchToSession(_ sessionName: String) async {
         do {
             try await tmuxService.switchToSession(sessionName)
+            recordSessionVisit(named: sessionName)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -411,6 +445,7 @@ final class PaletteViewModel {
             switch action {
             case .switchSession(let name):
                 try await tmuxService.switchToSession(name)
+                recordSessionVisit(named: name)
 
             case .switchWindow(let session, let windowIndex):
                 try await tmuxService.switchToWindow(sessionName: session, windowIndex: windowIndex)
