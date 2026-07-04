@@ -10,6 +10,10 @@ private final class PalettePanel: NSPanel {
 
 @MainActor
 final class PaletteWindowController {
+    /// Runs on every hide, whatever triggered it (escape, selection,
+    /// click-outside, hotkey toggle) — the palette's teardown choke point.
+    var onHide: (() -> Void)?
+
     private var panel: NSPanel?
     private var hostingView: NSHostingView<AnyView>?
     private nonisolated(unsafe) var clickMonitor: Any?
@@ -57,6 +61,7 @@ final class PaletteWindowController {
     func hide() {
         panel?.orderOut(nil)
         removeClickOutsideMonitor()
+        onHide?()
         // If something did activate us (e.g. opening via the menu bar),
         // step aside so focus returns to the previous app.
         if NSApp.isActive {

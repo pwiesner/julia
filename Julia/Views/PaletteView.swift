@@ -260,6 +260,17 @@ struct PaletteView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+
+                    Spacer()
+
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 6, height: 6)
+                        Text("live")
+                    }
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 8)

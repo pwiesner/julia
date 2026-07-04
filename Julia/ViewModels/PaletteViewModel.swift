@@ -390,10 +390,11 @@ final class PaletteViewModel {
         visitHistory.recordVisit(id: id)
     }
 
-    /// Refreshes `previewContent` based on the current selection. If the
-    /// selection is a window, captures its active pane (with a tiny debounce
-    /// so rapid arrow-key navigation doesn't spam tmux). Cancels any
-    /// in-flight capture from a previous selection.
+    /// Streams the selected window's pane into `previewContent`: captures
+    /// after a tiny debounce (so rapid arrow-key navigation doesn't spam
+    /// tmux), then keeps re-capturing every second while the selection
+    /// holds — a working agent's output plays live in the preview. Cancels
+    /// any loop from a previous selection.
     func updatePreview() {
         previewTask?.cancel()
 
@@ -407,16 +408,31 @@ final class PaletteViewModel {
         let target = "\(sessionName):\(windowIndex)"
         previewTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(50))
-            guard !Task.isCancelled, let self else { return }
-
-            do {
-                let content = try await tmuxService.capturePane(target: target)
-                guard !Task.isCancelled else { return }
-                self.previewContent = content
-            } catch {
-                self.previewContent = nil
+            while !Task.isCancelled {
+                guard let self else { return }
+                do {
+                    let content = try await self.tmuxService.capturePane(target: target)
+                    guard !Task.isCancelled else { return }
+                    // Only publish real changes so a quiet pane doesn't
+                    // re-render every tick.
+                    if content.content != self.previewContent?.content
+                        || content.cols != self.previewContent?.cols
+                        || content.rows != self.previewContent?.rows {
+                        self.previewContent = content
+                    }
+                } catch {
+                    self.previewContent = nil
+                    return
+                }
+                try? await Task.sleep(for: .seconds(1))
             }
         }
+    }
+
+    /// Stops the live preview loop; called whenever the palette hides.
+    func stopPreview() {
+        previewTask?.cancel()
+        previewTask = nil
     }
 
     /// Flips the empty-query list between windows and sessions.
