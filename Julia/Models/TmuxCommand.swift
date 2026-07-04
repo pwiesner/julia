@@ -107,6 +107,8 @@ struct PaletteItem: Identifiable, Sendable {
     let subtitle: String?
     let icon: String
     var iconColor: Color? = nil
+    /// When set, a section header with this title renders above the row.
+    var sectionTitle: String? = nil
     let action: PaletteAction
 
     enum PaletteAction: Sendable {

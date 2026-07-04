@@ -197,33 +197,44 @@ struct PaletteView: View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader(viewModel.listHeader)
 
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 2) {
-                        ForEach(viewModel.filteredItems.indices, id: \.self) { index in
-                            let item = viewModel.filteredItems[index]
-                            CommandRowView(
-                                item: item,
-                                isSelected: viewModel.selectedIndex == index,
-                                shortcutHint: index < 9 ? "⌘\(index + 1)" : nil
-                            )
-                            .id(index)
-                            .onTapGesture {
-                                viewModel.selectedIndex = index
-                                Task {
-                                    let shouldDismiss = await viewModel.executeSelected()
-                                    if shouldDismiss {
-                                        onDismiss()
+            if viewModel.isAgentListEmpty {
+                ContentUnavailableView(
+                    "All quiet",
+                    systemImage: "sparkles",
+                    description: Text("No agents are working or waiting on you.")
+                )
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 2) {
+                            ForEach(viewModel.filteredItems.indices, id: \.self) { index in
+                                let item = viewModel.filteredItems[index]
+                                if let section = item.sectionTitle {
+                                    sectionHeader(section)
+                                }
+                                CommandRowView(
+                                    item: item,
+                                    isSelected: viewModel.selectedIndex == index,
+                                    shortcutHint: index < 9 ? "⌘\(index + 1)" : nil
+                                )
+                                .id(index)
+                                .onTapGesture {
+                                    viewModel.selectedIndex = index
+                                    Task {
+                                        let shouldDismiss = await viewModel.executeSelected()
+                                        if shouldDismiss {
+                                            onDismiss()
+                                        }
                                     }
                                 }
                             }
                         }
+                        .padding(8)
                     }
-                    .padding(8)
-                }
-                .onChange(of: viewModel.selectedIndex) { _, newValue in
-                    withAnimation {
-                        proxy.scrollTo(newValue, anchor: .center)
+                    .onChange(of: viewModel.selectedIndex) { _, newValue in
+                        withAnimation {
+                            proxy.scrollTo(newValue, anchor: .center)
+                        }
                     }
                 }
             }

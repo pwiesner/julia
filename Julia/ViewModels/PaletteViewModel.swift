@@ -168,17 +168,34 @@ final class PaletteViewModel {
             .map { Self.windowItem(for: $0.window, in: $0.session) }
     }
 
-    /// Every window with an agent, triaged: waiting on the user first with
-    /// the longest wait at the top (a queue to answer), then working ones
-    /// by most recent activity, then agents not yet classified.
+    /// The actionable agents only, in two labeled sections: waiting on the
+    /// user (longest wait first — a queue to answer), then working (most
+    /// recently active first). Idle and unclassified agents are excluded;
+    /// they're findable in the windows list.
     private var agentOverviewItems: [PaletteItem] {
-        agentWindows
-            .sorted {
-                let a = Self.agentRank($0.window)
-                let b = Self.agentRank($1.window)
-                return a.tier != b.tier ? a.tier < b.tier : a.value < b.value
+        let waiting = agentWindows
+            .filter(\.window.isAwaitingUser)
+            .sorted { ($0.window.lastActivity ?? .distantPast) < ($1.window.lastActivity ?? .distantPast) }
+        let working = agentWindows
+            .filter { $0.window.agentActivity == .working }
+            .sorted { ($0.window.lastActivity ?? .distantPast) > ($1.window.lastActivity ?? .distantPast) }
+
+        var items: [PaletteItem] = []
+        for (offset, entry) in waiting.enumerated() {
+            var item = Self.windowItem(for: entry.window, in: entry.session)
+            if offset == 0 {
+                item.sectionTitle = "Needs you (\(waiting.count))"
             }
-            .map { Self.windowItem(for: $0.window, in: $0.session) }
+            items.append(item)
+        }
+        for (offset, entry) in working.enumerated() {
+            var item = Self.windowItem(for: entry.window, in: entry.session)
+            if offset == 0 {
+                item.sectionTitle = "Working (\(working.count))"
+            }
+            items.append(item)
+        }
+        return items
     }
 
     private var agentWindows: [(session: TmuxSession, window: TmuxWindow)] {
@@ -187,28 +204,18 @@ final class PaletteViewModel {
         }
     }
 
-    private static func agentRank(_ window: TmuxWindow) -> (tier: Int, value: TimeInterval) {
-        let activity = window.lastActivity?.timeIntervalSince1970 ?? 0
-        return switch window.agentActivity {
-        case .waitingForInput where window.isAwaitingUser: (0, activity) // oldest ask first
-        case .working: (1, -activity)          // most recently active first
-        case .waitingForInput: (2, -activity)  // idle: waiting for over a day
-        case nil: (3, -activity)
-        }
-    }
-
-    /// Header for the actions column, with triage counts in agents mode.
+    /// Header for the actions column; in agents mode it notes how many
+    /// idle agents the triage view is hiding.
     var listHeader: String {
         guard mode == .browsing, browseList == .agents else { return "Actions" }
-        let windows = agentWindows.map(\.window)
-        let waiting = windows.count(where: \.isAwaitingUser)
-        let working = windows.count { $0.agentActivity == .working }
-        let idle = windows.count(where: \.isIdleAgent)
-        var header = "Agents · \(waiting) need you · \(working) working"
-        if idle > 0 {
-            header += " · \(idle) idle"
-        }
-        return header
+        let idle = agentWindows.count(where: \.window.isIdleAgent)
+        return idle > 0 ? "Agents · \(idle) idle hidden" : "Agents"
+    }
+
+    /// True when agents mode has nothing actionable to show.
+    var isAgentListEmpty: Bool {
+        mode == .browsing && browseList == .agents
+            && searchText.isEmpty && filteredItems.isEmpty
     }
 
     /// All sessions ranked for flipping: visited sessions by frecency, then
