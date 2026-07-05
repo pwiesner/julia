@@ -81,7 +81,7 @@ struct PaletteView: View {
     }
 
     /// Invisible buttons carrying the palette's chords: cmd+1…9 activate
-    /// the Nth row, cmd+shift+W wraps up the selected agent, and cmd+delete
+    /// the Nth row, cmd+shift+W wraps up the selected agent, and cmd+K
     /// kills the selected window in the tidy view.
     private var quickJumpShortcuts: some View {
         Group {
@@ -100,7 +100,9 @@ struct PaletteView: View {
             Button("") {
                 viewModel.killSelectedWindow()
             }
-            .keyboardShortcut(.delete, modifiers: .command)
+            // Not cmd+delete: the always-focused search field claims that
+            // as delete-to-beginning-of-line before the shortcut can fire.
+            .keyboardShortcut("k", modifiers: .command)
         }
         .opacity(0)
         .accessibilityHidden(true)

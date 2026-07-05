@@ -41,7 +41,7 @@ final class PaletteViewModel {
             switch browseList {
             case .windows: "Search sessions, windows, or commands..."
             case .agents: "Agents — tab for windows"
-            case .tidy: "Tidy — ⌘⇧W wrap up · ⌘⌫ kill · esc back"
+            case .tidy: "Tidy — ⌘⇧W wrap up · ⌘K kill · esc back"
             }
         case .selectingTarget(let command):
             switch command {
@@ -230,7 +230,7 @@ final class PaletteViewModel {
 
         var items: [PaletteItem] = []
         for group in [(title: "Idle agents · ⌘⇧W to wrap up", members: idleAgents),
-                      (title: "Stale windows · ⌘⌫ to kill", members: staleWindows)] {
+                      (title: "Stale windows · ⌘K to kill", members: staleWindows)] {
             for (offset, entry) in group.members.enumerated() {
                 var item = Self.windowItem(for: entry.window, in: entry.session)
                 if offset == 0 {
