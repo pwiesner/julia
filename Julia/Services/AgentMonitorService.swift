@@ -103,8 +103,15 @@ final class AgentMonitorService {
                 window.agentSince = status.since
                 // Day-old prompts are idle, not waiting; don't badge them.
                 guard window.isAwaitingUser else { return nil }
-                // Already seen since it asked — the user knows.
-                guard (window.askedAt ?? .distantPast) > (seenAt[window.id] ?? .distantPast) else { return nil }
+                // Already seen since it asked — the user knows. Windows
+                // without beeper's exact timestamps use pane activity as
+                // the ask time, and merely visiting one makes Claude
+                // redraw — output that lands right after the seen mark and
+                // masquerades as a fresh ask. Grant those a grace period.
+                let asked = window.askedAt ?? .distantPast
+                let seen = seenAt[window.id] ?? .distantPast
+                let graceAfterSeen: TimeInterval = window.agentSince == nil ? 90 : 0
+                guard asked > seen.addingTimeInterval(graceAfterSeen) else { return nil }
                 return window
             }
             .sorted { a, b in
