@@ -31,6 +31,10 @@ final class PaletteViewModel {
     var isLoading = false
     var mode: Mode = .browsing
     var browseList: BrowseList = .windows
+    /// One-shot override for what the next palette open shows, e.g. the
+    /// menu bar's keymap item. Consumed by the view on appear, which
+    /// otherwise resets to windows.
+    var pendingBrowseList: BrowseList?
     var previewContent: TmuxService.PaneCapture?
     /// The selected window's pull request, once resolved; nil while
     /// unresolved or when there is none.
@@ -400,6 +404,11 @@ final class PaletteViewModel {
             }
         }
         return items
+    }
+
+    func takePendingBrowseList() -> BrowseList? {
+        defer { pendingBrowseList = nil }
+        return pendingBrowseList
     }
 
     func refresh() {

@@ -30,7 +30,7 @@ struct PaletteView: View {
         }
         .onAppear {
             viewModel.mode = .browsing
-            viewModel.browseList = .windows
+            viewModel.browseList = viewModel.takePendingBrowseList() ?? .windows
             viewModel.searchText = ""
             viewModel.selectedIndex = 0
             viewModel.previewContent = nil

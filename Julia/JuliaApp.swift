@@ -16,6 +16,7 @@ struct JuliaApp: App {
                 monitor: agentMonitor,
                 onShowPalette: showPalette,
                 onJumpToAgent: jumpToWaitingAgent,
+                onShowKeymap: showKeymap,
                 onOpenSettings: openSettingsInFront,
                 onQuit: { NSApp.terminate(nil) }
             )
@@ -67,6 +68,13 @@ struct JuliaApp: App {
         paletteController.show(content: paletteView)
     }
 
+    /// Opens the palette directly on the keymap page — the menu bar path
+    /// for someone who doesn't yet know any chords, ⌘/ included.
+    private func showKeymap() {
+        viewModel.pendingBrowseList = .help
+        showPalette()
+    }
+
     private func togglePalette() {
         if paletteController.isVisible {
             paletteController.hide()
@@ -111,6 +119,7 @@ struct MenuBarView: View {
     let monitor: AgentMonitorService
     let onShowPalette: () -> Void
     let onJumpToAgent: () -> Void
+    let onShowKeymap: () -> Void
     let onOpenSettings: () -> Void
     let onQuit: () -> Void
 
@@ -144,6 +153,13 @@ struct MenuBarView: View {
         }
 
         Divider()
+
+        // The keymap teaches every chord, but its own chord has to be
+        // learnable somewhere chord-free: here.
+        Button("Keyboard Shortcuts") {
+            onShowKeymap()
+        }
+        .keyboardShortcut("/")
 
         Button("Settings...") {
             onOpenSettings()
