@@ -1,3 +1,4 @@
+import BeeperKit
 import Foundation
 import SwiftUI
 
@@ -36,6 +37,11 @@ final class PaletteViewModel {
     private let visitHistory = VisitHistoryService()
     private var previewTask: Task<Void, Never>?
     private var loadGeneration = 0
+    private let beeperMonitor = BeeperMonitor()
+    private var liveUpdatesTask: Task<Void, Never>?
+    /// Whether the palette is on screen; beeper events are ignored while
+    /// it isn't, since the next show reloads from scratch anyway.
+    private var isPaletteVisible = false
 
     var placeholder: String {
         switch mode {
@@ -385,16 +391,51 @@ final class PaletteViewModel {
     }
 
     func refresh() {
+        isPaletteVisible = true
+        startLiveUpdates()
         Task {
             await loadSessions()
         }
     }
 
-    func loadSessions() async {
-        isLoading = true
-        defer { isLoading = false }
+    /// Called whenever the palette hides; live reloads pause until the
+    /// next show.
+    func paletteDidHide() {
+        isPaletteVisible = false
+    }
+
+    /// Reloads the open palette whenever a beeper hook reports a state
+    /// change, so the HUD shows working → waiting flips as they happen
+    /// instead of freezing at open time. One long-lived listener for the
+    /// view model's lifetime: the change stream is single-consumer and
+    /// finishes if its iterating task is cancelled, so it is never torn
+    /// down between shows — hiding just makes events no-ops.
+    private func startLiveUpdates() {
+        guard liveUpdatesTask == nil else { return }
+        try? beeperMonitor.start()
+        liveUpdatesTask = Task { [weak self] in
+            guard let changes = self?.beeperMonitor.changes else { return }
+            for await _ in changes {
+                // Hooks fire in quick bursts (Stop right after
+                // PostToolUse); let them settle before reloading.
+                try? await Task.sleep(for: .milliseconds(200))
+                guard let self, self.isPaletteVisible else { continue }
+                await self.loadSessions(quiet: true)
+            }
+        }
+    }
+
+    /// Loads tmux state into the palette. Quiet loads are the live
+    /// refreshes of an already-painted palette: no loading indicator, and
+    /// the cursor follows the row it was on — rows re-order as agents
+    /// change state, and the selection tracking a *position* would hand
+    /// the user's next keystroke to whatever slid underneath it.
+    func loadSessions(quiet: Bool = false) async {
+        if !quiet { isLoading = true }
+        defer { if !quiet { isLoading = false } }
         loadGeneration += 1
         let generation = loadGeneration
+        let anchor = quiet ? selectionAnchor() : nil
 
         do {
             // Fast pass: sessions, windows, branches — two tmux spawns.
@@ -404,6 +445,7 @@ final class PaletteViewModel {
             sessions = base
             errorMessage = nil
             visitHistory.prune(keeping: Set(base.flatMap(\.windows).map(\.id) + base.map(\.id)))
+            if quiet { restoreSelection(toAnchor: anchor) }
 
             // Slow pass: agent states (beeper first, pane captures as
             // fallback), off the critical path; glyphs appear when
@@ -423,10 +465,44 @@ final class PaletteViewModel {
                 }
                 return session
             }
+            if quiet { restoreSelection(toAnchor: anchor) }
         } catch {
             guard generation == loadGeneration else { return }
             errorMessage = error.localizedDescription
             sessions = []
+        }
+    }
+
+    /// Identity of the currently selected row, if it names a session or
+    /// window — command rows don't move between reloads and need none.
+    private func selectionAnchor() -> String? {
+        let items = filteredItems
+        guard selectedIndex < items.count else { return nil }
+        return Self.anchorKey(for: items[selectedIndex].action)
+    }
+
+    /// Puts the cursor back on the anchored row after a live reload, or
+    /// clamps it if that row is gone (its agent answered, its window died).
+    private func restoreSelection(toAnchor anchor: String?) {
+        let items = filteredItems
+        let restored = anchor.flatMap { key in
+            items.firstIndex { Self.anchorKey(for: $0.action) == key }
+        }
+        let newIndex = restored ?? min(selectedIndex, max(0, items.count - 1))
+        if newIndex != selectedIndex {
+            selectedIndex = newIndex  // the view's onChange re-previews
+        } else if restored == nil {
+            // Same index but possibly a different row now; the preview
+            // must not keep playing the old window.
+            updatePreview()
+        }
+    }
+
+    private static func anchorKey(for action: PaletteItem.PaletteAction) -> String? {
+        switch action {
+        case .switchSession(let name): "session:\(name)"
+        case .switchWindow(let sessionName, let windowIndex): "window:\(sessionName):\(windowIndex)"
+        default: nil
         }
     }
 

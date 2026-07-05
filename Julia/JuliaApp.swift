@@ -36,6 +36,7 @@ struct JuliaApp: App {
         Task { @MainActor in
             paletteController.onHide = { [viewModel] in
                 viewModel.stopPreview()
+                viewModel.paletteDidHide()
             }
             hotkeyService.register(.togglePalette, hotkey: .savedPalette) { [self] in
                 togglePalette()
