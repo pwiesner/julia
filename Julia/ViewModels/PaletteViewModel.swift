@@ -32,10 +32,15 @@ final class PaletteViewModel {
     var mode: Mode = .browsing
     var browseList: BrowseList = .windows
     var previewContent: TmuxService.PaneCapture?
+    /// The selected window's pull request, once resolved; nil while
+    /// unresolved or when there is none.
+    var selectedPullRequest: PullRequestService.PullRequest?
 
     private let tmuxService = TmuxService()
     private let visitHistory = VisitHistoryService()
+    private let pullRequests = PullRequestService()
     private var previewTask: Task<Void, Never>?
+    private var pullRequestTask: Task<Void, Never>?
     private var loadGeneration = 0
     private let beeperMonitor = BeeperMonitor()
     private var liveUpdatesTask: Task<Void, Never>?
@@ -538,6 +543,7 @@ final class PaletteViewModel {
     /// any loop from a previous selection.
     func updatePreview() {
         previewTask?.cancel()
+        resolveSelectedPullRequest()
 
         let items = filteredItems
         guard selectedIndex < items.count,
@@ -574,6 +580,34 @@ final class PaletteViewModel {
     func stopPreview() {
         previewTask?.cancel()
         previewTask = nil
+        pullRequestTask?.cancel()
+        pullRequestTask = nil
+    }
+
+    /// Looks up the selected window's pull request — lazily, off the
+    /// selection change, so no gh call ever runs for rows nobody is
+    /// looking at. The service caches per repo-and-branch, making
+    /// repeat visits free.
+    private func resolveSelectedPullRequest() {
+        pullRequestTask?.cancel()
+        selectedPullRequest = nil
+        guard let window = selectedWindow,
+              let directory = window.currentPath,
+              let branch = window.gitBranch else { return }
+        pullRequestTask = Task { [weak self] in
+            guard let self else { return }
+            let pullRequest = await self.pullRequests.pullRequest(directory: directory, branch: branch)
+            guard !Task.isCancelled, self.selectedWindow?.id == window.id else { return }
+            self.selectedPullRequest = pullRequest
+        }
+    }
+
+    /// Opens the selected window's pull request in the browser. Returns
+    /// whether there was one to open, so the caller can dismiss.
+    func openSelectedPullRequest() -> Bool {
+        guard let pullRequest = selectedPullRequest else { return false }
+        NSWorkspace.shared.open(pullRequest.url)
+        return true
     }
 
     /// Flips the empty-query list between windows and the agents overview.

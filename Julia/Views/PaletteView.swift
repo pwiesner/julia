@@ -84,8 +84,9 @@ struct PaletteView: View {
     }
 
     /// Invisible buttons carrying the palette's chords: cmd+1…9 activate
-    /// the Nth row, cmd+shift+W wraps up the selected agent, and cmd+K
-    /// kills the selected window in the tidy view.
+    /// the Nth row, cmd+shift+W wraps up the selected agent, cmd+K kills
+    /// the selected window in the tidy view, and cmd+P opens the selected
+    /// window's pull request.
     private var quickJumpShortcuts: some View {
         Group {
             ForEach(1..<10, id: \.self) { number in
@@ -111,6 +112,13 @@ struct PaletteView: View {
                 viewModel.showHelp()
             }
             .keyboardShortcut("/", modifiers: .command)
+
+            Button("") {
+                if viewModel.openSelectedPullRequest() {
+                    onDismiss()
+                }
+            }
+            .keyboardShortcut("p", modifiers: .command)
         }
         .opacity(0)
         .accessibilityHidden(true)
@@ -291,6 +299,13 @@ struct PaletteView: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
 
+                        if let pullRequest = viewModel.selectedPullRequest {
+                            Text(pullRequestLabel(for: pullRequest))
+                                .font(Design.rowSubtitleFont)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
                         Spacer()
 
                         HStack(spacing: 4) {
@@ -333,6 +348,14 @@ struct PaletteView: View {
             .padding(.bottom, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// "PR #47 · ⌘P" once the selected branch's pull request resolves;
+    /// merged and closed ones are named as such so ⌘P isn't a surprise.
+    private func pullRequestLabel(for pullRequest: PullRequestService.PullRequest) -> String {
+        pullRequest.state == "OPEN"
+            ? "PR #\(pullRequest.number) · ⌘P"
+            : "PR #\(pullRequest.number) (\(pullRequest.state.lowercased())) · ⌘P"
     }
 
     /// "~/projects/julia · ⎇ main"-style context line for the preview.

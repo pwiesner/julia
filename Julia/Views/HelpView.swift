@@ -15,6 +15,7 @@ struct HelpView: View {
                 ("⌘1–9", "activate row 1–9"),
                 ("⇥", "flip between windows and agents"),
                 ("⌘B", "toggle the sessions sidebar"),
+                ("⌘P", "open the selected branch's pull request"),
                 ("⌘⇧W", "wrap up the selected agent gracefully"),
                 ("⌘/", "this page"),
                 ("esc", "close")
