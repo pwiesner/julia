@@ -18,17 +18,16 @@ struct HelpColumnView: View {
                     .padding(.bottom, 4)
 
                 ForEach(section.entries, id: \.keys) { entry in
-                    HStack(alignment: .firstTextBaseline, spacing: 16) {
-                        Text(entry.keys)
-                            .font(.system(size: 14, design: .monospaced))
-                            .tracking(2)
-                            .foregroundStyle(.primary)
-                            .frame(width: 190, alignment: .leading)
+                    HStack(alignment: .center, spacing: 14) {
+                        // Caps right-align against the gutter so every
+                        // one touches its description — no gulf to jump.
+                        KeycapView(keys: entry.keys)
+                            .frame(width: 150, alignment: .trailing)
                         Text(entry.action)
-                            .font(.system(size: 14))
+                            .font(.system(size: 13.5))
                             .foregroundStyle(.secondary)
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 3)
                 }
             }
         }
