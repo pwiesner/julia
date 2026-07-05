@@ -101,6 +101,7 @@ final class AgentMonitorService {
                 window.agentActivity = status.activity
                 window.agentMessage = status.message
                 window.agentSince = status.since
+                window.agentTask = status.task
                 // Day-old prompts are idle, not waiting; don't badge them.
                 guard window.isAwaitingUser else { return nil }
                 // Already seen since it asked — the user knows. Windows
@@ -163,8 +164,16 @@ final class AgentMonitorService {
         }
     }
 
-    /// Switches to a specific window, e.g. from a clicked notification.
+    /// Switches to a specific window, e.g. from a clicked notification or
+    /// the menu bar's waiting list, with the same badge semantics as the
+    /// jump hotkey: going there is seeing it.
     func jump(toSession sessionName: String, windowIndex: Int) {
+        if let target = waitingWindows.first(where: {
+            $0.sessionName == sessionName && $0.index == windowIndex
+        }) {
+            seenAt[target.id] = .now
+            waitingWindows.removeAll { $0.id == target.id }
+        }
         Task {
             try? await tmuxService.switchToWindow(
                 sessionName: sessionName,

@@ -13,6 +13,7 @@ struct JuliaApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuBarView(
+                monitor: agentMonitor,
                 onShowPalette: showPalette,
                 onJumpToAgent: jumpToWaitingAgent,
                 onOpenSettings: openSettingsInFront,
@@ -86,6 +87,7 @@ struct JuliaApp: App {
 }
 
 struct MenuBarView: View {
+    let monitor: AgentMonitorService
     let onShowPalette: () -> Void
     let onJumpToAgent: () -> Void
     let onOpenSettings: () -> Void
@@ -102,6 +104,24 @@ struct MenuBarView: View {
         }
         .keyboardShortcut(Hotkey.savedJumpToAgent.keyboardShortcut)
 
+        // The badge says how many need you; this says who and what for,
+        // one click from being there — triage without the palette.
+        if !monitor.waitingWindows.isEmpty {
+            Divider()
+            Section("Needs you") {
+                ForEach(monitor.waitingWindows) { window in
+                    Button {
+                        monitor.jump(toSession: window.sessionName, windowIndex: window.index)
+                    } label: {
+                        Label(
+                            Self.menuTitle(for: window),
+                            systemImage: window.agentGlyph ?? "bubble.left.fill"
+                        )
+                    }
+                }
+            }
+        }
+
         Divider()
 
         Button("Settings...") {
@@ -115,6 +135,17 @@ struct MenuBarView: View {
             onQuit()
         }
         .keyboardShortcut("q")
+    }
+
+    /// Menu items get one modest line: where the agent is, then a short
+    /// slice of its task, which is what tells same-project agents apart.
+    private static func menuTitle(for window: TmuxWindow) -> String {
+        let place = "\(window.sessionName):\(window.index) \(window.displayName)"
+        guard var task = window.agentTask else { return place }
+        if task.count > 40 {
+            task = task.prefix(40).trimmingCharacters(in: .whitespaces) + "…"
+        }
+        return "\(place) — “\(task)”"
     }
 }
 
