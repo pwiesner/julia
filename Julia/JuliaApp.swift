@@ -82,7 +82,28 @@ struct JuliaApp: App {
     private func openSettingsInFront() {
         paletteController.hide()
         NSApp.activate(ignoringOtherApps: true)
+        let wasAlreadyOpen = settingsWindow?.isVisible == true
         openSettings()
+
+        // macOS restores the frame saved by older, smaller layouts, so a
+        // grown window ends up hugging the dock. Center fresh opens; an
+        // already-open window keeps wherever the user put it.
+        guard !wasAlreadyOpen else { return }
+        Task { @MainActor in
+            for _ in 0..<10 {
+                if let window = settingsWindow {
+                    window.center()
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
+    }
+
+    private var settingsWindow: NSWindow? {
+        NSApp.windows.first {
+            $0.identifier?.rawValue.contains("Settings") == true || $0.title == "Julia Settings"
+        }
     }
 }
 
