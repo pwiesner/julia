@@ -29,6 +29,13 @@ struct HelpView: View {
     /// Maintenance and search: what you do once you're somewhere.
     private var rightSections: [(title: String, entries: [(keys: String, action: String)])] {
         [
+            ("Screens — double-tap ⇧", [
+                ("⇧⇧ w", "windows — home"),
+                ("⇧⇧ a", "agents overview"),
+                ("⇧⇧ t", "tidy"),
+                ("⇧⇧ /", "this page"),
+                ("type it", "\"windows\", \"agents\", \"tidy\", \"help\" too")
+            ]),
             ("Tidy — type \"tidy\"", [
                 ("⌘⇧W", "wrap up the selected idle agent"),
                 ("⌘K", "kill the selected window (tidy only)"),

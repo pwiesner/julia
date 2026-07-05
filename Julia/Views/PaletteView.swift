@@ -158,6 +158,19 @@ struct PaletteView: View {
                 .font(Design.searchFont)
                 .focused($isSearchFocused)
 
+            // Double-tap shift armed: the next key picks a screen. The
+            // hints double as the mode indicator.
+            if viewModel.isScreenSelectActive {
+                HStack(spacing: 10) {
+                    screenSelectHint("w", "windows")
+                    screenSelectHint("a", "agents")
+                    screenSelectHint("t", "tidy")
+                    screenSelectHint("/", "keymap")
+                    screenSelectHint("esc", "cancel")
+                }
+                .transition(.opacity)
+            }
+
             if !viewModel.searchText.isEmpty {
                 Button {
                     viewModel.searchText = ""
@@ -169,6 +182,15 @@ struct PaletteView: View {
             }
         }
         .padding(16)
+    }
+
+    private func screenSelectHint(_ key: String, _ name: String) -> some View {
+        HStack(spacing: 5) {
+            KeycapView(keys: key)
+            Text(name)
+                .font(Design.rowSubtitleFont)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private var isShowingHelp: Bool {

@@ -35,6 +35,12 @@ final class PaletteViewModel {
     /// menu bar's keymap item. Consumed by the view on appear, which
     /// otherwise resets to windows.
     var pendingBrowseList: BrowseList?
+    /// True while the palette is waiting for a single screen letter,
+    /// entered by double-tapping shift — the experiment answer to "the
+    /// search field owns every bare key, but ⌘-chords are hard to
+    /// remember". The next keypress either picks a screen or falls
+    /// through to typing.
+    private(set) var isScreenSelectActive = false
     var previewContent: TmuxService.PaneCapture?
     /// The selected window's pull request, once resolved; nil while
     /// unresolved or when there is none.
@@ -45,6 +51,8 @@ final class PaletteViewModel {
     private let pullRequests = PullRequestService()
     private var previewTask: Task<Void, Never>?
     private var pullRequestTask: Task<Void, Never>?
+    private var screenSelectMonitor: Any?
+    private var lastShiftTapAt = Date.distantPast
     private var loadGeneration = 0
     private let beeperMonitor = BeeperMonitor()
     private var liveUpdatesTask: Task<Void, Never>?
@@ -414,6 +422,7 @@ final class PaletteViewModel {
     func refresh() {
         isPaletteVisible = true
         startLiveUpdates()
+        startScreenSelectMonitor()
         Task {
             await loadSessions()
         }
@@ -423,6 +432,78 @@ final class PaletteViewModel {
     /// next show.
     func paletteDidHide() {
         isPaletteVisible = false
+        isScreenSelectActive = false
+    }
+
+    /// Switches the browsing list to the given screen from anywhere.
+    func showScreen(_ list: BrowseList) {
+        guard mode == .browsing else { return }
+        browseList = list
+        searchText = ""
+        selectedIndex = 0
+        updatePreview()
+    }
+
+    // MARK: - Screen select (double-tap shift)
+
+    /// Two shift taps within this window, with no key between, arm
+    /// screen select. Tight enough that shift-while-typing can't
+    /// masquerade as a double tap.
+    private static let shiftDoubleTapWindow: TimeInterval = 0.6
+
+    /// Watches for the double shift tap and, once armed, claims the next
+    /// keypress. One long-lived monitor, inert while the palette is
+    /// hidden — same lifecycle story as the beeper listener.
+    private func startScreenSelectMonitor() {
+        guard screenSelectMonitor == nil else { return }
+        screenSelectMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
+            // Not `self?.filter() ?? event`: optional chaining flattens
+            // "self is gone" and "filter swallowed the event" into the
+            // same nil, and the coalescing would resurrect every event
+            // the filter deliberately returned nil for.
+            guard let self else { return event }
+            return self.filterScreenSelect(event)
+        }
+    }
+
+    private func filterScreenSelect(_ event: NSEvent) -> NSEvent? {
+        guard isPaletteVisible else { return event }
+
+        if event.type == .flagsChanged {
+            // Count only bare shift presses: the key itself going down,
+            // with no other modifier held (⌘⇧W must not arm this).
+            let isShiftKey = event.keyCode == 56 || event.keyCode == 60
+            let shiftWentDown = isShiftKey && event.modifierFlags.contains(.shift)
+            let bare = event.modifierFlags.intersection([.command, .option, .control]).isEmpty
+            guard shiftWentDown, bare else { return event }
+            if Date.now.timeIntervalSince(lastShiftTapAt) < Self.shiftDoubleTapWindow {
+                lastShiftTapAt = .distantPast
+                isScreenSelectActive = true
+            } else {
+                lastShiftTapAt = .now
+            }
+            return event
+        }
+
+        guard isScreenSelectActive else {
+            // A real keystroke between taps means the shift was typing,
+            // not signaling.
+            lastShiftTapAt = .distantPast
+            return event
+        }
+
+        isScreenSelectActive = false
+        // Lowercased: "shift shift t" naturally ends with shift still
+        // held, and a capital T must mean tidy, not "type a T".
+        switch event.charactersIgnoringModifiers?.lowercased() {
+        case "w": showScreen(.windows); return nil
+        case "a": showScreen(.agents); return nil
+        case "t": showScreen(.tidy); return nil
+        case "/": showScreen(.help); return nil
+        default: break
+        }
+        // esc just cancels; anything else cancels and types normally.
+        return event.keyCode == 53 ? nil : event
     }
 
     /// Reloads the open palette whenever a beeper hook reports a state
@@ -674,11 +755,7 @@ final class PaletteViewModel {
 
     /// Opens the keymap page.
     func showHelp() {
-        guard mode == .browsing else { return }
-        browseList = .help
-        searchText = ""
-        selectedIndex = 0
-        updatePreview()
+        showScreen(.help)
     }
 
     func selectNext() {
@@ -705,16 +782,23 @@ final class PaletteViewModel {
                 return false
             }
 
+            if case .showWindows = item.action {
+                showScreen(.windows)
+                return false
+            }
+
+            if case .showAgents = item.action {
+                showScreen(.agents)
+                return false
+            }
+
             if case .showTidy = item.action {
-                browseList = .tidy
-                searchText = ""
-                selectedIndex = 0
-                updatePreview()
+                showScreen(.tidy)
                 return false
             }
 
             if case .showHelp = item.action {
-                showHelp()
+                showScreen(.help)
                 return false
             }
 
@@ -809,7 +893,7 @@ final class PaletteViewModel {
                 try await tmuxService.switchToWindow(sessionName: session, windowIndex: windowIndex)
                 recordWindowVisit(session: session, windowIndex: windowIndex)
 
-            case .command, .showTidy, .showHelp:
+            case .command, .showWindows, .showAgents, .showTidy, .showHelp:
                 // Handled before execution or needing more input.
                 break
 
@@ -890,10 +974,16 @@ final class PaletteViewModel {
     private func addContextualCommands(to items: inout [PaletteItem], query: String) {
         let lowerQuery = query.lowercased()
 
+        if "windows".localizedStandardContains(lowerQuery) {
+            items.append(Self.windowsCommandItem)
+        }
+        if "agents".localizedStandardContains(lowerQuery) {
+            items.append(Self.agentsCommandItem)
+        }
         if "tidy up".localizedStandardContains(lowerQuery) {
             items.append(Self.tidyCommandItem)
         }
-        if "help keys keyboard shortcuts".localizedStandardContains(lowerQuery) {
+        if "help keys keyboard shortcuts keymap".localizedStandardContains(lowerQuery) {
             items.append(Self.helpCommandItem)
         }
 
@@ -920,6 +1010,20 @@ final class PaletteViewModel {
             }
         }
     }
+
+    private static let windowsCommandItem = PaletteItem(
+        title: "Windows",
+        subtitle: "back to the window list — home",
+        icon: "macwindow",
+        action: .showWindows
+    )
+
+    private static let agentsCommandItem = PaletteItem(
+        title: "Agents overview",
+        subtitle: "who needs you, who's working, who's idle",
+        icon: "sparkles",
+        action: .showAgents
+    )
 
     private static let tidyCommandItem = PaletteItem(
         title: "Tidy up",
