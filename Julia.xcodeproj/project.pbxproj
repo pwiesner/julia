@@ -19,6 +19,7 @@
 		E01000023 /* VisitHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000023 /* VisitHistoryService.swift */; };
 		E01000028 /* AgentMonitorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000028 /* AgentMonitorService.swift */; };
 		E01000029 /* MenuBarLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000029 /* MenuBarLabel.swift */; };
+		E01000034 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000034 /* HelpView.swift */; };
 		E01000024 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000024 /* Design.swift */; };
 		E01000025 /* Hotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000025 /* Hotkey.swift */; };
 		E01000027 /* PaletteAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000027 /* PaletteAppearance.swift */; };
@@ -47,6 +48,7 @@
 		E02000023 /* VisitHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitHistoryService.swift; sourceTree = "<group>"; };
 		E02000028 /* AgentMonitorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMonitorService.swift; sourceTree = "<group>"; };
 		E02000029 /* MenuBarLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarLabel.swift; sourceTree = "<group>"; };
+		E02000034 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		E02000024 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
 		E02000025 /* Hotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hotkey.swift; sourceTree = "<group>"; };
 		E02000027 /* PaletteAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteAppearance.swift; sourceTree = "<group>"; };
@@ -141,6 +143,7 @@
 				E02000010 /* CommandRowView.swift */,
 				E02000026 /* SettingsView.swift */,
 				E02000029 /* MenuBarLabel.swift */,
+				E02000034 /* HelpView.swift */,
 				F02000001 /* TerminalPreviewView.swift */,
 			);
 			path = Views;
@@ -245,6 +248,7 @@
 				E01000023 /* VisitHistoryService.swift in Sources */,
 				E01000028 /* AgentMonitorService.swift in Sources */,
 				E01000029 /* MenuBarLabel.swift in Sources */,
+				E01000034 /* HelpView.swift in Sources */,
 				E01000024 /* Design.swift in Sources */,
 				E01000025 /* Hotkey.swift in Sources */,
 				E01000027 /* PaletteAppearance.swift in Sources */,

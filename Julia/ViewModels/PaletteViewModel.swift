@@ -19,6 +19,8 @@ final class PaletteViewModel {
         case agents
         /// Cleanup candidates: idle agents to wrap up, stale windows to kill.
         case tidy
+        /// The keymap, tig-style.
+        case help
     }
 
     var searchText = ""
@@ -42,6 +44,7 @@ final class PaletteViewModel {
             case .windows: "Search sessions, windows, or commands..."
             case .agents: "Agents — tab for windows"
             case .tidy: "Tidy — ⌘⇧W wrap up · ⌘K kill · esc back"
+            case .help: "Keyboard shortcuts — esc back"
             }
         case .selectingTarget(let command):
             switch command {
@@ -103,6 +106,7 @@ final class PaletteViewModel {
             switch browseList {
             case .agents: return agentOverviewItems
             case .tidy: return tidyItems
+            case .help: return []  // the help page renders its own content
             case .windows: break
             }
             items.append(contentsOf: recentWindowItems)
@@ -249,6 +253,7 @@ final class PaletteViewModel {
         case .windows: return "Actions"
         case .agents: return "Agents"
         case .tidy: return "Tidy up"
+        case .help: return "Keyboard shortcuts"
         }
     }
 
@@ -530,13 +535,22 @@ final class PaletteViewModel {
         }
     }
 
-    /// Leaves the tidy view; returns false if we weren't in it.
-    func exitTidy() -> Bool {
-        guard browseList == .tidy else { return false }
+    /// Leaves the tidy or help view; returns false if we weren't in one.
+    func exitOverlayList() -> Bool {
+        guard browseList == .tidy || browseList == .help else { return false }
         browseList = .windows
         selectedIndex = 0
         updatePreview()
         return true
+    }
+
+    /// Opens the keymap page.
+    func showHelp() {
+        guard mode == .browsing else { return }
+        browseList = .help
+        searchText = ""
+        selectedIndex = 0
+        updatePreview()
     }
 
     func selectNext() {
@@ -568,6 +582,11 @@ final class PaletteViewModel {
                 searchText = ""
                 selectedIndex = 0
                 updatePreview()
+                return false
+            }
+
+            if case .showHelp = item.action {
+                showHelp()
                 return false
             }
 
@@ -662,7 +681,7 @@ final class PaletteViewModel {
                 try await tmuxService.switchToWindow(sessionName: session, windowIndex: windowIndex)
                 recordWindowVisit(session: session, windowIndex: windowIndex)
 
-            case .command, .showTidy:
+            case .command, .showTidy, .showHelp:
                 // Handled before execution or needing more input.
                 break
 
@@ -746,6 +765,9 @@ final class PaletteViewModel {
         if "tidy up".localizedStandardContains(lowerQuery) {
             items.append(Self.tidyCommandItem)
         }
+        if "help keys keyboard shortcuts".localizedStandardContains(lowerQuery) {
+            items.append(Self.helpCommandItem)
+        }
 
         // If query might be a new session name
         if !sessions.contains(where: { $0.name.lowercased() == lowerQuery }) {
@@ -776,6 +798,13 @@ final class PaletteViewModel {
         subtitle: "review idle agents and stale windows",
         icon: "wind",
         action: .showTidy
+    )
+
+    private static let helpCommandItem = PaletteItem(
+        title: "Keyboard shortcuts",
+        subtitle: "⌘/",
+        icon: "questionmark.circle",
+        action: .showHelp
     )
 
     private func addAllCommands(to items: inout [PaletteItem]) {
@@ -816,7 +845,8 @@ final class PaletteViewModel {
                 subtitle: "kill <name>",
                 icon: TmuxCommandType.killSession.icon,
                 action: .command(.killSession)
-            )
+            ),
+            Self.helpCommandItem
         ])
     }
 }

@@ -119,5 +119,6 @@ struct PaletteItem: Identifiable, Sendable {
         case command(TmuxCommandType)
         case executeCommand(TmuxCommand)
         case showTidy
+        case showHelp
     }
 }

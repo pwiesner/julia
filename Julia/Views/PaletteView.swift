@@ -56,7 +56,7 @@ struct PaletteView: View {
             viewModel.updatePreview()
         }
         .onKeyPress(.escape) {
-            if !viewModel.cancelChainedFlow() && !viewModel.exitTidy() {
+            if !viewModel.cancelChainedFlow() && !viewModel.exitOverlayList() {
                 onDismiss()
             }
             return .handled
@@ -103,6 +103,11 @@ struct PaletteView: View {
             // Not cmd+delete: the always-focused search field claims that
             // as delete-to-beginning-of-line before the shortcut can fire.
             .keyboardShortcut("k", modifiers: .command)
+
+            Button("") {
+                viewModel.showHelp()
+            }
+            .keyboardShortcut("/", modifiers: .command)
         }
         .opacity(0)
         .accessibilityHidden(true)
@@ -212,7 +217,9 @@ struct PaletteView: View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader(viewModel.listHeader)
 
-            if viewModel.isAgentListEmpty {
+            if viewModel.mode == .browsing, viewModel.browseList == .help {
+                HelpView()
+            } else if viewModel.isAgentListEmpty {
                 ContentUnavailableView(
                     "All quiet",
                     systemImage: "sparkles",
