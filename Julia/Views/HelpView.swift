@@ -1,9 +1,12 @@
 import SwiftUI
 
 /// The keymap, tig-style: every binding and search trick in one page.
-/// Global rows read the user's actual configured hotkeys.
+/// Global rows read the user's actual configured hotkeys. Two columns so
+/// the whole keymap fits without scrolling — a cheat sheet below the
+/// fold is a worse cheat sheet.
 struct HelpView: View {
-    private var sections: [(title: String, entries: [(keys: String, action: String)])] {
+    /// Navigation: the bindings that move you around.
+    private var leftSections: [(title: String, entries: [(keys: String, action: String)])] {
         [
             ("Anywhere", [
                 (Hotkey.savedPalette.displayString, "toggle the palette"),
@@ -19,7 +22,13 @@ struct HelpView: View {
                 ("⌘⇧W", "wrap up the selected agent gracefully"),
                 ("⌘/", "this page"),
                 ("esc", "close")
-            ]),
+            ])
+        ]
+    }
+
+    /// Maintenance and search: what you do once you're somewhere.
+    private var rightSections: [(title: String, entries: [(keys: String, action: String)])] {
+        [
             ("Tidy — type \"tidy\"", [
                 ("⌘⇧W", "wrap up the selected idle agent"),
                 ("⌘K", "kill the selected window (tidy only)"),
@@ -37,31 +46,12 @@ struct HelpView: View {
     }
 
     var body: some View {
+        // The scroll view stays as a safety net for cramped layouts; at
+        // the palette's normal size everything fits without it.
         ScrollView {
-            VStack(alignment: .leading, spacing: 2) {
-                ForEach(sections, id: \.title) { section in
-                    Text(section.title)
-                        .font(Design.sectionHeaderFont)
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
-                        .tracking(1.2)
-                        .padding(.top, 12)
-                        .padding(.bottom, 4)
-
-                    ForEach(section.entries, id: \.keys) { entry in
-                        HStack(alignment: .firstTextBaseline, spacing: 16) {
-                            Text(entry.keys)
-                                .font(.system(size: 14, design: .monospaced))
-                                .tracking(2)
-                                .foregroundStyle(.primary)
-                                .frame(width: 190, alignment: .leading)
-                            Text(entry.action)
-                                .font(.system(size: 14))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
+            HStack(alignment: .top, spacing: 32) {
+                HelpColumnView(sections: leftSections)
+                HelpColumnView(sections: rightSections)
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 12)
@@ -71,6 +61,6 @@ struct HelpView: View {
 
 #Preview {
     HelpView()
-        .frame(width: 480, height: 500)
+        .frame(width: 1060, height: 500)
         .background(.thickMaterial)
 }
