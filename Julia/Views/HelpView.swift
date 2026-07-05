@@ -51,8 +51,9 @@ struct HelpView: View {
                         HStack(alignment: .firstTextBaseline, spacing: 16) {
                             Text(entry.keys)
                                 .font(.system(size: 14, design: .monospaced))
+                                .tracking(2)
                                 .foregroundStyle(.primary)
-                                .frame(width: 170, alignment: .leading)
+                                .frame(width: 190, alignment: .leading)
                             Text(entry.action)
                                 .font(.system(size: 14))
                                 .foregroundStyle(.secondary)
