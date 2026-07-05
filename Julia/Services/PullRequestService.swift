@@ -22,8 +22,13 @@ actor PullRequestService {
     /// hammering the API from a held arrow key.
     private static let lifetime: TimeInterval = 5 * 60
 
-    private let ghPath: String? = ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"]
-        .first { FileManager.default.fileExists(atPath: $0) }
+    /// Where gh is installed, probing common locations.
+    static func installedPath() -> String? {
+        ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"]
+            .first { FileManager.default.fileExists(atPath: $0) }
+    }
+
+    private let ghPath = PullRequestService.installedPath()
 
     func pullRequest(directory: String, branch: String) async -> PullRequest? {
         guard let ghPath else { return nil }

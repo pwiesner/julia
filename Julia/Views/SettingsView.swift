@@ -12,10 +12,16 @@ struct SettingsView: View {
     @AppStorage(PaletteAppearance.defaultsKey) private var appearanceRaw = PaletteAppearance.dark.rawValue
     @AppStorage(NotificationMode.defaultsKey) private var notificationModeRaw = NotificationMode.permissionRequests.rawValue
 
+    private static let repositoryURL = URL(string: "https://github.com/pwiesner/julia")
+    private static let releasesURL = URL(string: "https://github.com/pwiesner/julia/releases")
+
     var body: some View {
         Form {
             Section("Appearance") {
-                Picker("Palette theme", selection: $appearanceRaw) {
+                // One appearance for all of julia's windows, this one
+                // included — a dark palette with light settings reads
+                // like two apps.
+                Picker("Appearance", selection: $appearanceRaw) {
                     ForEach(PaletteAppearance.allCases) { appearance in
                         Text(appearance.label).tag(appearance.rawValue)
                     }
@@ -40,24 +46,29 @@ struct SettingsView: View {
                 recorderRow("Toggle Palette", slot: .togglePalette, current: paletteHotkey)
                 recorderRow("Jump to Waiting Agent", slot: .jumpToAgent, current: jumpHotkey)
 
-                Text("Click, then press the new combination. It needs at least one of ⌘, ⌥, or ⌃.")
+                Text("Click a key, then press the new combination. It needs at least one of ⌘, ⌥, or ⌃. Press ⌘/ in the palette for the full keymap.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
+            HealthSectionView()
+
             Section("About") {
-                LabeledContent("Version") {
-                    Text(appVersion)
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("tmux") {
-                    Text("Required for operation")
-                        .foregroundStyle(.secondary)
+                LabeledContent("Julia \(appVersion)") {
+                    HStack(spacing: 14) {
+                        if let releases = Self.releasesURL {
+                            Link("releases", destination: releases)
+                        }
+                        if let repository = Self.repositoryURL {
+                            Link("github", destination: repository)
+                        }
+                    }
                 }
             }
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 300)
+        .frame(width: 460, height: 620)
+        .preferredColorScheme(PaletteAppearance(rawValue: appearanceRaw)?.colorScheme)
         .onDisappear(perform: stopRecording)
     }
 
@@ -66,10 +77,9 @@ struct SettingsView: View {
             Button {
                 toggleRecording(for: slot)
             } label: {
-                Text(recordingSlot == slot ? "Type shortcut… (esc cancels)" : current.displayString)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minWidth: 160)
+                KeycapView(keys: recordingSlot == slot ? "type shortcut… (esc cancels)" : current.displayString)
             }
+            .buttonStyle(.plain)
         }
     }
 

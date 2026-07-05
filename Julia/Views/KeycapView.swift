@@ -12,13 +12,15 @@ struct KeycapView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background {
+                // Primary-derived tints so the cap holds up in either
+                // color scheme (the settings window can be light).
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(.white.opacity(0.09))
+                    .fill(.primary.opacity(0.09))
                     .shadow(color: .black.opacity(0.35), radius: 0, y: 1)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+                    .strokeBorder(.primary.opacity(0.14), lineWidth: 1)
             }
     }
 }

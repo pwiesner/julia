@@ -14,10 +14,14 @@ actor TmuxService {
     private let tmuxPath: String
     private let transcripts = TranscriptService()
 
+    /// Where tmux is installed, probing common locations.
+    nonisolated static func installedPath() -> String? {
+        ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"]
+            .first { FileManager.default.fileExists(atPath: $0) }
+    }
+
     init() {
-        // Try common tmux locations
-        let paths = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"]
-        self.tmuxPath = paths.first { FileManager.default.fileExists(atPath: $0) } ?? "tmux"
+        self.tmuxPath = Self.installedPath() ?? "tmux"
     }
 
     // MARK: - Query Commands

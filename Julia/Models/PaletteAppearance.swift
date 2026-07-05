@@ -1,8 +1,9 @@
 import AppKit
+import SwiftUI
 
-/// User-selectable appearance for the palette panel, independent of the
-/// system theme. Defaults to dark — the palette floats over terminals,
-/// and terminals live in the dark.
+/// User-selectable appearance for julia's windows — the palette and the
+/// settings page — independent of the system theme. Defaults to dark:
+/// the palette floats over terminals, and terminals live in the dark.
 enum PaletteAppearance: String, CaseIterable, Identifiable {
     case system
     case light
@@ -24,6 +25,15 @@ enum PaletteAppearance: String, CaseIterable, Identifiable {
         case .system: nil
         case .light: NSAppearance(named: .aqua)
         case .dark: NSAppearance(named: .darkAqua)
+        }
+    }
+
+    /// The same choice for SwiftUI-managed windows; nil follows the system.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 
