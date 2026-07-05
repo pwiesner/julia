@@ -348,10 +348,14 @@ final class PaletteViewModel {
             case nil: relative
             }
         }()
+        let context = window.agentContextTokens.map {
+            "\($0.formatted(.number.notation(.compactName))) ctx"
+        }
         let details = [
             window.secondaryLabel,
             window.gitBranch,
             recency,
+            context,
             window.agentMessage,
             window.agentTask.map { "“\($0)”" }
         ].compactMap(\.self)
@@ -465,6 +469,7 @@ final class PaletteViewModel {
                     window.agentSince = status?.since
                     window.agentPaneId = status?.paneId
                     window.agentTask = status?.task
+                    window.agentContextTokens = status?.contextTokens
                     return window
                 }
                 return session

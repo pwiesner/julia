@@ -32,6 +32,10 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     /// What the agent is working on — the last human prompt from its
     /// transcript — when its session reports through beeper.
     var agentTask: String?
+    /// Tokens occupying the agent's context, when its session reports
+    /// through beeper. A raw count: the model's window size isn't
+    /// knowable here, so no percentage.
+    var agentContextTokens: Int?
 
     init(
         id: String,

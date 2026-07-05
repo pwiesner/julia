@@ -177,6 +177,8 @@ actor TmuxService {
         /// What the agent is working on: the last human prompt from its
         /// transcript, when its session reports one.
         var task: String?
+        /// Tokens occupying the agent's context, from the same transcript.
+        var contextTokens: Int?
     }
 
     /// Classifies agent state for every candidate window. Sessions that
@@ -200,8 +202,8 @@ actor TmuxService {
                 case .waitingForInput: .waitingForInput
                 case .waitingForPermission: .waitingForPermission
                 }
-                let task: String? = if let path = session.transcriptPath {
-                    await transcripts.currentTask(transcriptPath: path)
+                let summary: TranscriptService.Summary? = if let path = session.transcriptPath {
+                    await transcripts.summary(transcriptPath: path)
                 } else {
                     nil
                 }
@@ -210,7 +212,8 @@ actor TmuxService {
                     message: session.message,
                     since: session.since,
                     paneId: session.tmuxPane,
-                    task: task
+                    task: summary?.task,
+                    contextTokens: summary?.contextTokens
                 )
             }
         }
