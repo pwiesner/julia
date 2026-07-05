@@ -311,10 +311,14 @@ actor TmuxService {
         _ = try await execute(["move-window", "-t", sessionName])
     }
 
-    /// Types text into a pane followed by return — exactly as if the user
-    /// had switched there and typed it.
+    /// Types text into a pane and submits it. The return is sent separately
+    /// after a beat: Claude Code groups rapid input as a paste, and an
+    /// Enter inside that window becomes a literal newline in the input box
+    /// instead of a submit.
     func sendKeys(target: String, text: String) async throws {
-        _ = try await execute(["send-keys", "-t", target, text, "Enter"])
+        _ = try await execute(["send-keys", "-t", target, text])
+        try await Task.sleep(for: .milliseconds(300))
+        _ = try await execute(["send-keys", "-t", target, "Enter"])
     }
 
     func killWindow(sessionName: String, windowIndex: Int) async throws {
