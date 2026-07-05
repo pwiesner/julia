@@ -494,15 +494,21 @@ final class PaletteViewModel {
         updatePreview()
     }
 
-    /// Sends /wrap-up to the selected agent's pane — the command's meaning
-    /// lives in ~/.claude/commands/wrap-up.md (or the project's override),
-    /// julia only delivers it. Queues politely if the agent is mid-turn.
+    /// Plain language rather than "/wrap-up": slash commands are snapshotted
+    /// at session start, so sessions older than the command file — exactly
+    /// the ones tidy targets — wouldn't recognize it. Text works in every
+    /// session, and pointing at the file keeps the meaning versioned there,
+    /// project override included, resolved by the agent itself.
+    private static let wrapUpInstruction = "Wrap up this session gracefully. Follow the instructions in .claude/commands/wrap-up.md if this project has one, otherwise ~/.claude/commands/wrap-up.md."
+
+    /// Sends the wrap-up instruction to the selected agent's pane. Queues
+    /// politely if the agent is mid-turn.
     func wrapUpSelectedAgent() {
         guard let window = selectedWindow, window.isAgentRunning else { return }
         let target = window.agentPaneId ?? "\(window.sessionName):\(window.index)"
         Task {
             do {
-                try await tmuxService.sendKeys(target: target, text: "/wrap-up")
+                try await tmuxService.sendKeys(target: target, text: Self.wrapUpInstruction)
             } catch {
                 errorMessage = error.localizedDescription
             }
