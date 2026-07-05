@@ -48,16 +48,16 @@ struct HelpView: View {
                         .padding(.bottom, 4)
 
                     ForEach(section.entries, id: \.keys) { entry in
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        HStack(alignment: .firstTextBaseline, spacing: 16) {
                             Text(entry.keys)
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(.system(size: 14, design: .monospaced))
                                 .foregroundStyle(.primary)
-                                .frame(width: 120, alignment: .leading)
+                                .frame(width: 170, alignment: .leading)
                             Text(entry.action)
-                                .font(Design.rowSubtitleFont)
+                                .font(.system(size: 14))
                                 .foregroundStyle(.secondary)
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 4)
                     }
                 }
             }

@@ -13,8 +13,11 @@ struct PaletteView: View {
             Divider()
             HStack(spacing: 0) {
                 contentArea
-                Divider()
-                previewPane
+                // The keymap reads better full-width; nothing to preview.
+                if !isShowingHelp {
+                    Divider()
+                    previewPane
+                }
             }
         }
         .frame(width: 1100, height: 620)
@@ -158,6 +161,10 @@ struct PaletteView: View {
             }
         }
         .padding(16)
+    }
+
+    private var isShowingHelp: Bool {
+        viewModel.mode == .browsing && viewModel.browseList == .help
     }
 
     private var contentArea: some View {
