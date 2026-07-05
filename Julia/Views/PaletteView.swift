@@ -56,7 +56,7 @@ struct PaletteView: View {
             viewModel.updatePreview()
         }
         .onKeyPress(.escape) {
-            if !viewModel.cancelChainedFlow() {
+            if !viewModel.cancelChainedFlow() && !viewModel.exitTidy() {
                 onDismiss()
             }
             return .handled
@@ -80,14 +80,27 @@ struct PaletteView: View {
         }
     }
 
-    /// Invisible buttons carrying the cmd+1…9 shortcuts: each activates the
-    /// Nth visible row directly, so the whole working set is one chord away.
+    /// Invisible buttons carrying the palette's chords: cmd+1…9 activate
+    /// the Nth row, cmd+shift+W wraps up the selected agent, and cmd+delete
+    /// kills the selected window in the tidy view.
     private var quickJumpShortcuts: some View {
-        ForEach(1..<10, id: \.self) { number in
-            Button("") {
-                quickJump(to: number - 1)
+        Group {
+            ForEach(1..<10, id: \.self) { number in
+                Button("") {
+                    quickJump(to: number - 1)
+                }
+                .keyboardShortcut(KeyEquivalent(Character("\(number)")), modifiers: .command)
             }
-            .keyboardShortcut(KeyEquivalent(Character("\(number)")), modifiers: .command)
+
+            Button("") {
+                viewModel.wrapUpSelectedAgent()
+            }
+            .keyboardShortcut("w", modifiers: [.command, .shift])
+
+            Button("") {
+                viewModel.killSelectedWindow()
+            }
+            .keyboardShortcut(.delete, modifiers: .command)
         }
         .opacity(0)
         .accessibilityHidden(true)

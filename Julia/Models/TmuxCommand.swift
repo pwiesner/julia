@@ -118,5 +118,6 @@ struct PaletteItem: Identifiable, Sendable {
         case switchWindow(sessionName: String, windowIndex: Int)
         case command(TmuxCommandType)
         case executeCommand(TmuxCommand)
+        case showTidy
     }
 }

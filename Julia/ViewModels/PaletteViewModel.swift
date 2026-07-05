@@ -10,12 +10,15 @@ final class PaletteViewModel {
         case enteringInput(command: TmuxCommandType, target: String)
     }
 
-    /// What the empty-query browsing list shows; tab flips between them.
+    /// What the empty-query browsing list shows; tab flips between windows
+    /// and agents, and the tidy command opens the third.
     enum BrowseList {
         case windows
         /// Agent windows only: waiting on the user first (longest wait at
         /// the top), then working.
         case agents
+        /// Cleanup candidates: idle agents to wrap up, stale windows to kill.
+        case tidy
     }
 
     var searchText = ""
@@ -35,9 +38,11 @@ final class PaletteViewModel {
     var placeholder: String {
         switch mode {
         case .browsing:
-            browseList == .agents
-                ? "Agents — tab for windows"
-                : "Search sessions, windows, or commands..."
+            switch browseList {
+            case .windows: "Search sessions, windows, or commands..."
+            case .agents: "Agents — tab for windows"
+            case .tidy: "Tidy — ⌘⇧W wrap up · ⌘⌫ kill · esc back"
+            }
         case .selectingTarget(let command):
             switch command {
             case .renameWindow:
@@ -95,8 +100,10 @@ final class PaletteViewModel {
         // an instant toggle. Tab flips to the agents overview. Sessions
         // (also by frecency) and commands follow in windows mode.
         if query.isEmpty {
-            if browseList == .agents {
-                return agentOverviewItems
+            switch browseList {
+            case .agents: return agentOverviewItems
+            case .tidy: return tidyItems
+            case .windows: break
             }
             items.append(contentsOf: recentWindowItems)
             items.append(contentsOf: frecentSessionItems)
@@ -207,9 +214,42 @@ final class PaletteViewModel {
         }
     }
 
+    /// Cleanup candidates: idle agents first (wrap them up before killing),
+    /// then windows nothing has touched in days. Oldest first — the most
+    /// forgotten window is the most deserving.
+    private var tidyItems: [PaletteItem] {
+        let all = sessions.flatMap { session in
+            session.windows.map { (session: session, window: $0) }
+        }
+        let idleAgents = all
+            .filter { $0.window.isAgentRunning && $0.window.isTidyCandidate }
+            .sorted { ($0.window.lastActivity ?? .distantPast) < ($1.window.lastActivity ?? .distantPast) }
+        let staleWindows = all
+            .filter { !$0.window.isAgentRunning && $0.window.isTidyCandidate }
+            .sorted { ($0.window.lastActivity ?? .distantPast) < ($1.window.lastActivity ?? .distantPast) }
+
+        var items: [PaletteItem] = []
+        for group in [(title: "Idle agents · ⌘⇧W to wrap up", members: idleAgents),
+                      (title: "Stale windows · ⌘⌫ to kill", members: staleWindows)] {
+            for (offset, entry) in group.members.enumerated() {
+                var item = Self.windowItem(for: entry.window, in: entry.session)
+                if offset == 0 {
+                    item.sectionTitle = group.title
+                }
+                items.append(item)
+            }
+        }
+        return items
+    }
+
     /// Header for the actions column.
     var listHeader: String {
-        mode == .browsing && browseList == .agents ? "Agents" : "Actions"
+        guard mode == .browsing else { return "Actions" }
+        switch browseList {
+        case .windows: return "Actions"
+        case .agents: return "Agents"
+        case .tidy: return "Tidy up"
+        }
     }
 
     /// The window behind the currently selected row, if the selection is a
@@ -373,6 +413,7 @@ final class PaletteViewModel {
                     window.agentActivity = status?.activity
                     window.agentMessage = status?.message
                     window.agentSince = status?.since
+                    window.agentPaneId = status?.paneId
                     return window
                 }
                 return session
@@ -445,12 +486,51 @@ final class PaletteViewModel {
         previewTask = nil
     }
 
-    /// Flips the empty-query list between windows and sessions.
+    /// Flips the empty-query list between windows and the agents overview.
     func toggleBrowseList() {
         guard mode == .browsing, searchText.isEmpty else { return }
         browseList = browseList == .windows ? .agents : .windows
         selectedIndex = 0
         updatePreview()
+    }
+
+    /// Sends /wrap-up to the selected agent's pane — the command's meaning
+    /// lives in ~/.claude/commands/wrap-up.md (or the project's override),
+    /// julia only delivers it. Queues politely if the agent is mid-turn.
+    func wrapUpSelectedAgent() {
+        guard let window = selectedWindow, window.isAgentRunning else { return }
+        let target = window.agentPaneId ?? "\(window.sessionName):\(window.index)"
+        Task {
+            do {
+                try await tmuxService.sendKeys(target: target, text: "/wrap-up")
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Kills the selected window. Only honored in the tidy view, where
+    /// destruction is the stated purpose.
+    func killSelectedWindow() {
+        guard browseList == .tidy, let window = selectedWindow else { return }
+        Task {
+            do {
+                try await tmuxService.killWindow(sessionName: window.sessionName, windowIndex: window.index)
+                await loadSessions()
+                selectedIndex = min(selectedIndex, max(0, filteredItems.count - 1))
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Leaves the tidy view; returns false if we weren't in it.
+    func exitTidy() -> Bool {
+        guard browseList == .tidy else { return false }
+        browseList = .windows
+        selectedIndex = 0
+        updatePreview()
+        return true
     }
 
     func selectNext() {
@@ -474,6 +554,14 @@ final class PaletteViewModel {
             // Clicking a chained-flow command transitions into the flow
             // instead of dismissing the palette.
             if case .command(let type) = item.action, beginChainedFlow(for: type) {
+                return false
+            }
+
+            if case .showTidy = item.action {
+                browseList = .tidy
+                searchText = ""
+                selectedIndex = 0
+                updatePreview()
                 return false
             }
 
@@ -568,8 +656,8 @@ final class PaletteViewModel {
                 try await tmuxService.switchToWindow(sessionName: session, windowIndex: windowIndex)
                 recordWindowVisit(session: session, windowIndex: windowIndex)
 
-            case .command:
-                // Commands without arguments need more input
+            case .command, .showTidy:
+                // Handled before execution or needing more input.
                 break
 
             case .executeCommand(let command):
@@ -649,6 +737,10 @@ final class PaletteViewModel {
     private func addContextualCommands(to items: inout [PaletteItem], query: String) {
         let lowerQuery = query.lowercased()
 
+        if "tidy up".localizedStandardContains(lowerQuery) {
+            items.append(Self.tidyCommandItem)
+        }
+
         // If query might be a new session name
         if !sessions.contains(where: { $0.name.lowercased() == lowerQuery }) {
             items.append(PaletteItem(
@@ -673,8 +765,16 @@ final class PaletteViewModel {
         }
     }
 
+    private static let tidyCommandItem = PaletteItem(
+        title: "Tidy up",
+        subtitle: "review idle agents and stale windows",
+        icon: "wind",
+        action: .showTidy
+    )
+
     private func addAllCommands(to items: inout [PaletteItem]) {
         items.append(contentsOf: [
+            Self.tidyCommandItem,
             PaletteItem(
                 title: "New session",
                 subtitle: "new <name>",

@@ -27,6 +27,8 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     /// Exactly when the agent entered its current state, when known —
     /// truer than pane activity, which any output can freshen.
     var agentSince: Date?
+    /// The exact pane the agent's session reported from, when known.
+    var agentPaneId: String?
 
     init(
         id: String,
@@ -119,6 +121,18 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     var isStale: Bool {
         guard let lastActivity else { return false }
         return Date.now.timeIntervalSince(lastActivity) > Self.waitingFreshnessLimit
+    }
+
+    /// Threshold for the tidy view: plain windows this old are candidates
+    /// for killing. Higher bar than mere dimming.
+    static let tidyThreshold: TimeInterval = 3 * 24 * 60 * 60
+
+    var isTidyCandidate: Bool {
+        if isAgentRunning {
+            return isIdleAgent
+        }
+        guard let lastActivity else { return false }
+        return Date.now.timeIntervalSince(lastActivity) > Self.tidyThreshold
     }
 
     /// Short label for the agent's state; the glyph shape shows it visually,

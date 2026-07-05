@@ -170,6 +170,9 @@ actor TmuxService {
         var activity: ClaudeActivity
         var message: String?
         var since: Date?
+        /// The exact pane the session reported from — the address for
+        /// sending anything back to the agent.
+        var paneId: String?
     }
 
     /// Classifies agent state for every candidate window. Sessions that
@@ -196,7 +199,8 @@ actor TmuxService {
                 result[windowId] = AgentStatus(
                     activity: activity,
                     message: session.message,
-                    since: session.since
+                    since: session.since,
+                    paneId: session.tmuxPane
                 )
             }
         }
@@ -305,6 +309,16 @@ actor TmuxService {
 
     func moveWindow(to sessionName: String) async throws {
         _ = try await execute(["move-window", "-t", sessionName])
+    }
+
+    /// Types text into a pane followed by return — exactly as if the user
+    /// had switched there and typed it.
+    func sendKeys(target: String, text: String) async throws {
+        _ = try await execute(["send-keys", "-t", target, text, "Enter"])
+    }
+
+    func killWindow(sessionName: String, windowIndex: Int) async throws {
+        _ = try await execute(["kill-window", "-t", "\(sessionName):\(windowIndex)"])
     }
 
     func renameWindow(_ newName: String, target: String? = nil) async throws {
