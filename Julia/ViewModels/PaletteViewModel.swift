@@ -143,10 +143,10 @@ final class PaletteViewModel {
                 icon: command.type.icon,
                 action: .executeCommand(command)
             ), at: 0)
-        } else {
-            // Show relevant commands when there's a search query
-            addContextualCommands(to: &items, query: query)
         }
+        // Contextual commands appear regardless: a session named "tidy"
+        // must not shadow the Tidy up feature (or "help" the keymap).
+        addContextualCommands(to: &items, query: query)
 
         return items
     }
