@@ -29,6 +29,9 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     var agentSince: Date?
     /// The exact pane the agent's session reported from, when known.
     var agentPaneId: String?
+    /// What the agent is working on — the last human prompt from its
+    /// transcript — when its session reports through beeper.
+    var agentTask: String?
 
     init(
         id: String,

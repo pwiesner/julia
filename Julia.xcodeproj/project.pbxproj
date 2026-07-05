@@ -17,6 +17,7 @@
 		E01000020 /* GitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000020 /* GitService.swift */; };
 		E01000021 /* ClaudeSessionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000021 /* ClaudeSessionService.swift */; };
 		E01000023 /* VisitHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000023 /* VisitHistoryService.swift */; };
+		E01000040 /* TranscriptService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000040 /* TranscriptService.swift */; };
 		E01000028 /* AgentMonitorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000028 /* AgentMonitorService.swift */; };
 		E01000029 /* MenuBarLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000029 /* MenuBarLabel.swift */; };
 		E01000034 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000034 /* HelpView.swift */; };
@@ -46,6 +47,7 @@
 		E02000020 /* GitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitService.swift; sourceTree = "<group>"; };
 		E02000021 /* ClaudeSessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSessionService.swift; sourceTree = "<group>"; };
 		E02000023 /* VisitHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitHistoryService.swift; sourceTree = "<group>"; };
+		E02000040 /* TranscriptService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptService.swift; sourceTree = "<group>"; };
 		E02000028 /* AgentMonitorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMonitorService.swift; sourceTree = "<group>"; };
 		E02000029 /* MenuBarLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarLabel.swift; sourceTree = "<group>"; };
 		E02000034 /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
@@ -127,6 +129,7 @@
 				E02000020 /* GitService.swift */,
 				E02000021 /* ClaudeSessionService.swift */,
 				E02000023 /* VisitHistoryService.swift */,
+				E02000040 /* TranscriptService.swift */,
 				E02000028 /* AgentMonitorService.swift */,
 				E02000033 /* NotificationService.swift */,
 				E02000006 /* HotkeyService.swift */,
@@ -246,6 +249,7 @@
 				E01000020 /* GitService.swift in Sources */,
 				E01000021 /* ClaudeSessionService.swift in Sources */,
 				E01000023 /* VisitHistoryService.swift in Sources */,
+				E01000040 /* TranscriptService.swift in Sources */,
 				E01000028 /* AgentMonitorService.swift in Sources */,
 				E01000029 /* MenuBarLabel.swift in Sources */,
 				E01000034 /* HelpView.swift in Sources */,

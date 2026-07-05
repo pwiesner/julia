@@ -12,6 +12,7 @@ actor TmuxService {
     private static let fieldSeparator = "\u{241F}"
 
     private let tmuxPath: String
+    private let transcripts = TranscriptService()
 
     init() {
         // Try common tmux locations
@@ -173,6 +174,9 @@ actor TmuxService {
         /// The exact pane the session reported from — the address for
         /// sending anything back to the agent.
         var paneId: String?
+        /// What the agent is working on: the last human prompt from its
+        /// transcript, when its session reports one.
+        var task: String?
     }
 
     /// Classifies agent state for every candidate window. Sessions that
@@ -196,11 +200,17 @@ actor TmuxService {
                 case .waitingForInput: .waitingForInput
                 case .waitingForPermission: .waitingForPermission
                 }
+                let task: String? = if let path = session.transcriptPath {
+                    await transcripts.currentTask(transcriptPath: path)
+                } else {
+                    nil
+                }
                 result[windowId] = AgentStatus(
                     activity: activity,
                     message: session.message,
                     since: session.since,
-                    paneId: session.tmuxPane
+                    paneId: session.tmuxPane,
+                    task: task
                 )
             }
         }

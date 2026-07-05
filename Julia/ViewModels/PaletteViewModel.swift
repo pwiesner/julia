@@ -335,7 +335,9 @@ final class PaletteViewModel {
         // The session is already in the title prefix and the glyph carries
         // agent state, so the subtitle holds process, branch, and recency —
         // narrated for agents ("asked 9m ago") since their timestamps mean
-        // something specific.
+        // something specific — plus what the agent was asked to do, quoted:
+        // with several agents in one directory, the task is what tells
+        // their otherwise-identical rows apart.
         let recency: String? = {
             guard let askedAt = window.askedAt else { return nil }
             let relative = askedAt.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
@@ -350,7 +352,8 @@ final class PaletteViewModel {
             window.secondaryLabel,
             window.gitBranch,
             recency,
-            window.agentMessage
+            window.agentMessage,
+            window.agentTask.map { "“\($0)”" }
         ].compactMap(\.self)
         return PaletteItem(
             title: "\(session.name):\(window.index) \(window.displayName)",
@@ -461,6 +464,7 @@ final class PaletteViewModel {
                     window.agentMessage = status?.message
                     window.agentSince = status?.since
                     window.agentPaneId = status?.paneId
+                    window.agentTask = status?.task
                     return window
                 }
                 return session
