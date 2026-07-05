@@ -12,6 +12,9 @@ A macOS command palette for tmux. Press the global hotkey (`Cmd+Shift+T` by defa
 - **Your agents page you**: a menu bar badge counts Claudes waiting unseen, a global hotkey jumps through them longest-wait first, and native notifications carry the agent's actual question (configurable: off / permission requests / all waits)
 - Windows ordered by **frecency** — your working set assembles at the top, the previous window is preselected (hotkey + return = alt-tab), and `Cmd+1`–`Cmd+9` jump straight to a row
 - A **live pane preview** for the selected window (watch an agent think before you commit to the jump), and a collapsible sessions sidebar (`Cmd+B`)
+- What each agent is **actually doing**: its last prompt and context usage right in the row, and `Cmd+P` opens the selected branch's pull request
+- **Wrap up and tidy**: `Cmd+Shift+W` asks the selected agent to wind down gracefully; type `tidy` for a cleanup view of idle agents and stale windows, where `Cmd+K` kills (there, and only there)
+- Press `Cmd+/` for the **full keymap**, rendered with your actual rebinds
 
 Agent state comes from [beeper](https://github.com/pwiesner/beeper) when installed — exact state straight from Claude Code's own hooks, mapped to windows by pane — with pane-content heuristics as the fallback.
 
