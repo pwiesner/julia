@@ -157,19 +157,23 @@ struct PaletteView: View {
                 .textFieldStyle(.plain)
                 .font(Design.searchFont)
                 .focused($isSearchFocused)
-
-            // Double-tap shift armed: the next key picks a screen. The
-            // hints double as the mode indicator.
-            if viewModel.isScreenSelectActive {
-                HStack(spacing: 10) {
-                    screenSelectHint("w", "windows")
-                    screenSelectHint("a", "agents")
-                    screenSelectHint("t", "tidy")
-                    screenSelectHint("/", "keymap")
-                    screenSelectHint("esc", "cancel")
+                // Double-tap shift armed: the next key picks a screen.
+                // The hints double as the mode indicator. Overlaid, not
+                // stacked — the chips are a hair taller than the text
+                // line, and in the HStack they'd grow the whole bar and
+                // nudge the palette every time the mode arms.
+                .overlay(alignment: .trailing) {
+                    if viewModel.isScreenSelectActive {
+                        HStack(spacing: 10) {
+                            screenSelectHint("w", "windows")
+                            screenSelectHint("a", "agents")
+                            screenSelectHint("t", "tidy")
+                            screenSelectHint("/", "keymap")
+                            screenSelectHint("esc", "cancel")
+                        }
+                        .transition(.opacity)
+                    }
                 }
-                .transition(.opacity)
-            }
 
             if !viewModel.searchText.isEmpty {
                 Button {
