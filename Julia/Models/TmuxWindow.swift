@@ -154,25 +154,43 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         return Date.now.timeIntervalSince(lastActivity) > Self.tidyThreshold
     }
 
+    /// Waiting freshly, but without asking anything specific: the agent
+    /// finished a reply and is resting. Calmer than a question — the
+    /// result is ready, no decision is blocked on you.
+    var isUnreadReply: Bool {
+        agentActivity == .waitingForInput && isAwaitingUser && agentAsk == nil
+    }
+
     /// Short label for the agent's state; the glyph shape shows it visually,
     /// this names it for VoiceOver.
     var agentStatusText: String? {
         switch agentActivity {
         case .working: "working"
-        case .waitingForInput: isAwaitingUser ? "your turn" : "idle"
+        case .waitingForInput:
+            if isAwaitingUser {
+                isUnreadReply ? "finished, unread" : "your turn"
+            } else {
+                "idle"
+            }
         case .waitingForPermission: isAwaitingUser ? "needs permission" : "idle"
         case nil: nil
         }
     }
 
     /// SF Symbol for agent windows: a lock while blocked on permission, a
-    /// filled speech bubble when freshly waiting on the user, an outline
-    /// once it's gone idle, sparkles otherwise. Nil for non-agent windows.
+    /// filled speech bubble when it asked something, a checked bubble when
+    /// it just finished a reply, an outline once it's gone idle, sparkles
+    /// otherwise. Nil for non-agent windows.
     var agentGlyph: String? {
         guard isAgentRunning else { return nil }
         return switch agentActivity {
         case .waitingForPermission: isAwaitingUser ? "lock.fill" : "bubble.left"
-        case .waitingForInput: isAwaitingUser ? "bubble.left.fill" : "bubble.left"
+        case .waitingForInput:
+            if isAwaitingUser {
+                isUnreadReply ? "checkmark.bubble.fill" : "bubble.left.fill"
+            } else {
+                "bubble.left"
+            }
         default: "sparkles"
         }
     }
@@ -181,7 +199,12 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         switch agentActivity {
         case .working: .orange
         case .waitingForPermission: isAwaitingUser ? .red : .secondary
-        case .waitingForInput: isAwaitingUser ? .blue : .secondary
+        case .waitingForInput:
+            if isAwaitingUser {
+                isUnreadReply ? .green : .blue
+            } else {
+                .secondary
+            }
         case nil: isAgentRunning ? .orange : nil
         }
     }

@@ -270,8 +270,9 @@ struct PaletteView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 2) {
-                            ForEach(viewModel.filteredItems.indices, id: \.self) { index in
-                                let item = viewModel.filteredItems[index]
+                            // Array(): bare enumerated() in ForEach needs
+                            // the macOS 26 RandomAccessCollection conformance.
+                            ForEach(Array(viewModel.filteredItems.enumerated()), id: \.element.id) { index, item in
                                 if let section = item.sectionTitle {
                                     sectionHeader(section)
                                 }
@@ -280,7 +281,7 @@ struct PaletteView: View {
                                     isSelected: viewModel.selectedIndex == index,
                                     shortcutHint: index < 9 ? "⌘\(index + 1)" : nil
                                 )
-                                .id(index)
+                                .id(item.id)
                                 .onTapGesture {
                                     viewModel.selectedIndex = index
                                     Task {
@@ -295,8 +296,10 @@ struct PaletteView: View {
                         .padding(8)
                     }
                     .onChange(of: viewModel.selectedIndex) { _, newValue in
+                        let items = viewModel.filteredItems
+                        guard newValue < items.count else { return }
                         withAnimation {
-                            proxy.scrollTo(newValue, anchor: .center)
+                            proxy.scrollTo(items[newValue].id, anchor: .center)
                         }
                     }
                 }

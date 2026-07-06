@@ -210,7 +210,10 @@ final class PaletteViewModel {
             .filter { $0.window.agentActivity == .waitingForPermission && $0.window.isAwaitingUser }
             .sorted { ($0.window.askedAt ?? .distantPast) < ($1.window.askedAt ?? .distantPast) }
         let waiting = agentWindows
-            .filter { $0.window.agentActivity == .waitingForInput && $0.window.isAwaitingUser }
+            .filter { $0.window.agentActivity == .waitingForInput && $0.window.isAwaitingUser && !$0.window.isUnreadReply }
+            .sorted { ($0.window.askedAt ?? .distantPast) < ($1.window.askedAt ?? .distantPast) }
+        let unread = agentWindows
+            .filter(\.window.isUnreadReply)
             .sorted { ($0.window.askedAt ?? .distantPast) < ($1.window.askedAt ?? .distantPast) }
         let working = agentWindows
             .filter { $0.window.agentActivity == .working }
@@ -222,6 +225,7 @@ final class PaletteViewModel {
         var items: [PaletteItem] = []
         for group in [(title: "Needs permission", members: permission),
                       (title: "Needs you", members: waiting),
+                      (title: "Finished — unread", members: unread),
                       (title: "Working", members: working),
                       (title: "Idle", members: idle)] {
             for (offset, entry) in group.members.enumerated() {
@@ -361,7 +365,7 @@ final class PaletteViewModel {
             let relative = askedAt.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
             return switch window.agentActivity {
             case .working: "active now"
-            case .waitingForInput: "asked \(relative)"
+            case .waitingForInput: window.isUnreadReply ? "finished \(relative)" : "asked \(relative)"
             case .waitingForPermission: "blocked \(relative)"
             case nil: relative
             }
@@ -556,7 +560,13 @@ final class PaletteViewModel {
             // The palette paints (and MRU-sorts) from this immediately.
             let base = try await tmuxService.listSessions()
             guard generation == loadGeneration else { return }
-            sessions = base
+            // Quiet reloads animate: rows sliding to their new place
+            // narrate what changed; teleporting rows just look haunted.
+            if quiet {
+                withAnimation(.snappy(duration: 0.25)) { sessions = base }
+            } else {
+                sessions = base
+            }
             errorMessage = nil
             visitHistory.prune(keeping: Set(base.flatMap(\.windows).map(\.id) + base.map(\.id)))
             if quiet { restoreSelection(toAnchor: anchor) }
@@ -571,7 +581,7 @@ final class PaletteViewModel {
             )
             let (statuses, commandLines) = await (statusesTask, commandsTask)
             guard generation == loadGeneration else { return }
-            sessions = base.map { session in
+            let enriched = base.map { session in
                 var session = session
                 session.windows = session.windows.map { window in
                     var window = window
@@ -586,6 +596,11 @@ final class PaletteViewModel {
                     return window
                 }
                 return session
+            }
+            if quiet {
+                withAnimation(.snappy(duration: 0.25)) { sessions = enriched }
+            } else {
+                sessions = enriched
             }
             if quiet { restoreSelection(toAnchor: anchor) }
         } catch {

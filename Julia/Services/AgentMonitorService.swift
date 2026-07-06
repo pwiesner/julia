@@ -116,10 +116,15 @@ final class AgentMonitorService {
                 return window
             }
             .sorted { a, b in
-                // Permission blocks a running task; those come first.
-                let aBlocked = a.agentActivity == .waitingForPermission
-                let bBlocked = b.agentActivity == .waitingForPermission
-                if aBlocked != bBlocked { return aBlocked }
+                // Urgency tiers: permission blocks a running task, a real
+                // ask blocks a decision, a finished reply just waits.
+                func tier(_ window: TmuxWindow) -> Int {
+                    if window.agentActivity == .waitingForPermission { return 0 }
+                    return window.isUnreadReply ? 2 : 1
+                }
+                let tierA = tier(a)
+                let tierB = tier(b)
+                if tierA != tierB { return tierA < tierB }
                 return (a.askedAt ?? .distantPast) < (b.askedAt ?? .distantPast)
             }
 
@@ -143,7 +148,7 @@ final class AgentMonitorService {
 
                 let fallback = window.agentActivity == .waitingForPermission
                     ? "Needs permission to run a tool"
-                    : "Waiting for your reply"
+                    : "Finished — ready for you"
                 notifications.notify(
                     windowId: window.id,
                     title: window.displayName,

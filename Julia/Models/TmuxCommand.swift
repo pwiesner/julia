@@ -102,7 +102,22 @@ struct TmuxCommand: Identifiable, Sendable {
 }
 
 struct PaletteItem: Identifiable, Sendable {
-    let id = UUID()
+    /// Stable across rebuilds — items are recomputed on every refresh,
+    /// and identity that survives lets SwiftUI animate a row moving
+    /// instead of treating it as a new stranger.
+    var id: String {
+        switch action {
+        case .switchSession(let name): "session:\(name)"
+        case .switchWindow(let sessionName, let windowIndex): "window:\(sessionName):\(windowIndex)"
+        case .command(let type): "command:\(type.rawValue)"
+        case .executeCommand: "execute:\(title)"
+        case .showWindows: "screen:windows"
+        case .showAgents: "screen:agents"
+        case .showTidy: "screen:tidy"
+        case .showHelp: "screen:help"
+        }
+    }
+
     let title: String
     let subtitle: String?
     let icon: String
