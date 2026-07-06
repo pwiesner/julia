@@ -340,7 +340,7 @@ struct PaletteView: View {
                         .foregroundStyle(.secondary)
                     }
 
-                    if let message = window.agentMessage {
+                    if let message = window.agentAsk {
                         Text(message)
                             .font(Design.rowSubtitleFont.italic())
                             .foregroundStyle(.secondary)

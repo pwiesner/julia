@@ -349,12 +349,13 @@ final class PaletteViewModel {
     }
 
     private static func windowItem(for window: TmuxWindow, in session: TmuxSession) -> PaletteItem {
-        // The session is already in the title prefix and the glyph carries
-        // agent state, so the subtitle holds process, branch, and recency —
-        // narrated for agents ("asked 9m ago") since their timestamps mean
-        // something specific — plus what the agent was asked to do, quoted:
-        // with several agents in one directory, the task is what tells
-        // their otherwise-identical rows apart.
+        // Urgency-swap layout: the glyph carries agent state, the title
+        // carries identity (name, then branch dimmed), and the one detail
+        // line shows whichever matters more right now — the agent's ask
+        // when it's blocked on something specific, else its task (with
+        // several agents in one directory, the task is what tells their
+        // otherwise-identical rows apart), else the window's process.
+        // Metrics live in a trailing column where they scan like a table.
         let recency: String? = {
             guard let askedAt = window.askedAt else { return nil }
             let relative = askedAt.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
@@ -368,20 +369,25 @@ final class PaletteViewModel {
         let context = window.agentContextTokens.map {
             "\($0.formatted(.number.notation(.compactName))) ctx"
         }
-        let details = [
-            window.secondaryLabel,
-            window.gitBranch,
-            recency,
-            context,
-            window.agentMessage,
-            window.agentTask.map { "“\($0)”" }
-        ].compactMap(\.self)
+        let detail: PaletteItem.Detail? = if let ask = window.agentAsk {
+            PaletteItem.Detail(kind: .ask, text: ask)
+        } else if let task = window.agentTask {
+            PaletteItem.Detail(kind: .task, text: "“\(task)”")
+        } else if let label = window.secondaryLabel {
+            PaletteItem.Detail(kind: .plain, text: label)
+        } else {
+            nil
+        }
         return PaletteItem(
             title: "\(session.name):\(window.index) \(window.displayName)",
-            subtitle: details.isEmpty ? nil : details.joined(separator: " · "),
+            subtitle: nil,
             icon: window.agentGlyph ?? "macwindow",
             iconColor: window.agentGlyphColor,
             isStale: window.isStale,
+            titleAccessory: window.gitBranch.map { "⎇ \($0)" },
+            detail: detail,
+            trailingPrimary: recency,
+            trailingSecondary: context,
             action: .switchWindow(sessionName: session.name, windowIndex: window.index)
         )
     }

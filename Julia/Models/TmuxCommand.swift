@@ -111,7 +111,29 @@ struct PaletteItem: Identifiable, Sendable {
     var sectionTitle: String? = nil
     /// Stale rows render dimmed until hovered or selected.
     var isStale: Bool = false
+    /// Dimmed context beside the title, e.g. the branch ("⎇ main").
+    var titleAccessory: String? = nil
+    /// The single context line under the title; see `Detail`.
+    var detail: Detail? = nil
+    /// Right-aligned metric, e.g. "asked 4m ago".
+    var trailingPrimary: String? = nil
+    /// Smaller metric beneath it, e.g. "76K ctx".
+    var trailingSecondary: String? = nil
     let action: PaletteAction
+
+    /// One line of context per row — whichever matters most right now.
+    /// Kind picks the rendering: asks demand attention, tasks read as
+    /// quotes, plain is quiet plumbing.
+    struct Detail: Sendable {
+        enum Kind: Sendable {
+            case ask
+            case task
+            case plain
+        }
+
+        let kind: Kind
+        let text: String
+    }
 
     enum PaletteAction: Sendable {
         case switchSession(String)

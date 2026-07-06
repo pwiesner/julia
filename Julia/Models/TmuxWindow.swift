@@ -212,6 +212,14 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         }
     }
 
+    /// The agent's message when it actually says something. The generic
+    /// "waiting for your input" boilerplate is a state, not an ask —
+    /// rendering it urgently is a false alarm.
+    var agentAsk: String? {
+        guard let agentMessage else { return nil }
+        return agentMessage.lowercased() == "claude is waiting for your input" ? nil : agentMessage
+    }
+
     /// True if the window's name, project directory, path, or foreground
     /// command matches the query. Used for palette filtering.
     func matches(_ query: String) -> Bool {

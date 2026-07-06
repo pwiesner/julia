@@ -22,11 +22,23 @@ struct CommandRowView: View {
                 }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(Design.rowTitleFont)
-                    .foregroundStyle(isSelected ? .white : .primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(item.title)
+                        .font(Design.rowTitleFont)
+                        .foregroundStyle(isSelected ? .white : .primary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+
+                    if let accessory = item.titleAccessory {
+                        // Secondary, not tertiary: stale rows dim to half
+                        // opacity on top of this, and tertiary × dimming
+                        // is unreadable.
+                        Text(accessory)
+                            .font(Design.rowSubtitleFont)
+                            .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.7)) : AnyShapeStyle(.secondary))
+                            .lineLimit(1)
+                    }
+                }
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
@@ -35,9 +47,35 @@ struct CommandRowView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
+
+                if let detail = item.detail {
+                    Text(detail.text)
+                        .font(detail.kind == .task ? Design.rowSubtitleFont.italic() : Design.rowSubtitleFont)
+                        .foregroundStyle(detailStyle(for: detail.kind))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
             }
 
             Spacer()
+
+            if item.trailingPrimary != nil || item.trailingSecondary != nil {
+                VStack(alignment: .trailing, spacing: 2) {
+                    if let primary = item.trailingPrimary {
+                        Text(primary)
+                            .font(Design.rowSubtitleFont)
+                            .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.8)) : AnyShapeStyle(.secondary))
+                    }
+                    if let secondary = item.trailingSecondary {
+                        Text(secondary)
+                            .font(Design.rowSubtitleFont)
+                            .monospacedDigit()
+                            .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.tertiary))
+                    }
+                }
+                .lineLimit(1)
+                .fixedSize()
+            }
 
             if let shortcutHint {
                 Text(shortcutHint)
@@ -54,6 +92,15 @@ struct CommandRowView: View {
         .opacity(item.isStale && !isSelected && !isHovered ? 0.5 : 1)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
+    }
+
+    /// Asks glow orange even on selection — they're why you're looking.
+    /// Tasks and plumbing stay quiet.
+    private func detailStyle(for kind: PaletteItem.Detail.Kind) -> AnyShapeStyle {
+        switch kind {
+        case .ask: AnyShapeStyle(Color.orange)
+        case .task, .plain: isSelected ? AnyShapeStyle(.white.opacity(0.8)) : AnyShapeStyle(.secondary)
+        }
     }
 
     private var iconStyle: AnyShapeStyle {
