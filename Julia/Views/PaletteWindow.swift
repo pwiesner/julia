@@ -103,8 +103,13 @@ final class PaletteWindowController {
     }
 
     private func positionPanel() {
+        // The screen the pointer is on, not NSScreen.main — with a laptop
+        // beside an external display, the palette should appear where the
+        // user is actually working.
+        let mouse = NSEvent.mouseLocation
+        let activeScreen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
         guard let panel,
-              let screen = NSScreen.main else { return }
+              let screen = activeScreen ?? NSScreen.main else { return }
 
         let screenFrame = screen.visibleFrame
         let panelSize = panel.frame.size
