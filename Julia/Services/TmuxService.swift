@@ -44,7 +44,8 @@ actor TmuxService {
             "-a",
             "-F",
             ["#{session_id}", "#{session_name}", "#{window_id}", "#{window_index}", "#{window_name}",
-             "#{window_active}", "#{window_activity}", "#{pane_current_path}", "#{pane_current_command}"]
+             "#{window_active}", "#{window_activity}", "#{pane_current_path}", "#{pane_current_command}",
+             "#{pane_pid}", "#{pane_title}"]
                 .joined(separator: sep)
         ])
 
@@ -73,6 +74,8 @@ actor TmuxService {
             }()
             let currentPath = parts[7].isEmpty ? nil : parts[7]
             let currentCommand = parts[8].isEmpty ? nil : parts[8]
+            let panePid = parts.count > 9 ? Int(parts[9]) : nil
+            let paneTitle = parts.count > 10 && !parts[10].isEmpty ? parts[10] : nil
             let gitBranch = currentPath.flatMap { path in
                 branchByPath[path, default: GitService.currentBranch(forDirectory: path)]
             }
@@ -90,7 +93,9 @@ actor TmuxService {
                 lastActivity: lastActivity,
                 currentPath: currentPath,
                 currentCommand: currentCommand,
-                gitBranch: gitBranch
+                gitBranch: gitBranch,
+                panePid: panePid,
+                paneTitle: paneTitle
             )
             windowsBySessionId[sessionId, default: []].append(window)
         }
@@ -245,6 +250,28 @@ actor TmuxService {
         return result
     }
 
+    /// What's actually running in each pane, keyed by pane pid: the
+    /// newest immediate child of the pane's root process, with its
+    /// arguments — "task admin" rather than "zsh". One ps spawn covers
+    /// every pane; a shell at a bare prompt has no child and no entry.
+    nonisolated func foregroundCommandLines(panePids: Set<Int>) async -> [Int: String] {
+        guard !panePids.isEmpty,
+              let output = try? await runProcess("/bin/ps", arguments: ["-axo", "ppid=,pid=,command="])
+        else { return [:] }
+
+        var newestChild: [Int: (pid: Int, command: String)] = [:]
+        for line in output.components(separatedBy: "\n") {
+            let parts = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+            guard parts.count == 3,
+                  let ppid = Int(parts[0]),
+                  let pid = Int(parts[1]),
+                  panePids.contains(ppid) else { continue }
+            if let existing = newestChild[ppid], existing.pid > pid { continue }
+            newestChild[ppid] = (pid, String(parts[2]))
+        }
+        return newestChild.mapValues { String($0.command.prefix(80)) }
+    }
+
     /// Snapshot of an active pane's visible state, including the actual
     /// pane dimensions so a renderer can size itself correctly.
     struct PaneCapture: Sendable {
@@ -397,6 +424,28 @@ actor TmuxService {
     }
 
     // MARK: - Private
+
+    /// Runs an arbitrary executable and returns stdout. Reads to EOF
+    /// before waiting so large output (ps lists every process) can't
+    /// deadlock on a full pipe.
+    private nonisolated func runProcess(_ path: String, arguments: [String]) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: path)
+            process.arguments = arguments
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = Pipe()
+            do {
+                try process.run()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                continuation.resume(returning: String(data: data, encoding: .utf8) ?? "")
+            } catch {
+                continuation.resume(throwing: TmuxError.processError(error))
+            }
+        }
+    }
 
     // Nonisolated so pane captures can run concurrently instead of
     // serializing on the actor. The body only touches locals and the

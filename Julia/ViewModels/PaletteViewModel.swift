@@ -369,10 +369,16 @@ final class PaletteViewModel {
         let context = window.agentContextTokens.map {
             "\($0.formatted(.number.notation(.compactName))) ctx"
         }
+        // Detail ladder, most informative first: the agent's real ask,
+        // its task (transcript, else Claude's own pane-title summary for
+        // pre-hook sessions), the pane's actual running command with
+        // arguments, and only then the bare process name.
         let detail: PaletteItem.Detail? = if let ask = window.agentAsk {
             PaletteItem.Detail(kind: .ask, text: ask)
-        } else if let task = window.agentTask {
+        } else if let task = window.agentTask ?? window.titleTask {
             PaletteItem.Detail(kind: .task, text: "“\(task)”")
+        } else if let commandLine = window.foregroundCommandLine {
+            PaletteItem.Detail(kind: .plain, text: commandLine)
         } else if let label = window.secondaryLabel {
             PaletteItem.Detail(kind: .plain, text: label)
         } else {
@@ -556,10 +562,15 @@ final class PaletteViewModel {
             if quiet { restoreSelection(toAnchor: anchor) }
 
             // Slow pass: agent states (beeper first, pane captures as
-            // fallback), off the critical path; glyphs appear when
-            // classification lands.
-            let statuses = await tmuxService.agentActivities(in: base.flatMap(\.windows))
-            guard generation == loadGeneration, !statuses.isEmpty else { return }
+            // fallback) and what's running in each pane, off the critical
+            // path; glyphs and details appear when classification lands.
+            let windows = base.flatMap(\.windows)
+            async let statusesTask = tmuxService.agentActivities(in: windows)
+            async let commandsTask = tmuxService.foregroundCommandLines(
+                panePids: Set(windows.compactMap(\.panePid))
+            )
+            let (statuses, commandLines) = await (statusesTask, commandsTask)
+            guard generation == loadGeneration else { return }
             sessions = base.map { session in
                 var session = session
                 session.windows = session.windows.map { window in
@@ -571,6 +582,7 @@ final class PaletteViewModel {
                     window.agentPaneId = status?.paneId
                     window.agentTask = status?.task
                     window.agentContextTokens = status?.contextTokens
+                    window.foregroundCommandLine = window.panePid.flatMap { commandLines[$0] }
                     return window
                 }
                 return session

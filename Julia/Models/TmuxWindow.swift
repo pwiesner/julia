@@ -17,6 +17,11 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     let currentCommand: String?
     /// Checked-out branch of the repository at `currentPath`, if any.
     let gitBranch: String?
+    /// Root process of the window's active pane (usually the shell).
+    let panePid: Int?
+    /// The pane's terminal title. Claude Code keeps a task summary here;
+    /// shells usually leave the hostname.
+    let paneTitle: String?
     /// What the Claude session in this window's directory is doing, if
     /// known. Mutable because it's filled in by a second, slower pass after
     /// the window list has already been shown.
@@ -29,6 +34,9 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
     var agentSince: Date?
     /// The exact pane the agent's session reported from, when known.
     var agentPaneId: String?
+    /// What's actually running in the pane, with arguments ("task admin",
+    /// not "zsh"). Filled by the slow pass; nil at a bare prompt.
+    var foregroundCommandLine: String?
     /// What the agent is working on — the last human prompt from its
     /// transcript — when its session reports through beeper.
     var agentTask: String?
@@ -48,6 +56,8 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         currentPath: String? = nil,
         currentCommand: String? = nil,
         gitBranch: String? = nil,
+        panePid: Int? = nil,
+        paneTitle: String? = nil,
         agentActivity: ClaudeActivity? = nil
     ) {
         self.id = id
@@ -60,6 +70,8 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         self.currentPath = currentPath
         self.currentCommand = currentCommand
         self.gitBranch = gitBranch
+        self.panePid = panePid
+        self.paneTitle = paneTitle
         self.agentActivity = agentActivity
     }
 
@@ -210,6 +222,18 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         } else {
             projectName
         }
+    }
+
+    /// Claude Code titles its pane with a live summary of the current
+    /// task ("✳ Improve movie title matching"). For agent windows the
+    /// transcript can't cover — sessions from before beeper's hooks —
+    /// the title is the next best answer to "what is this one doing".
+    var titleTask: String? {
+        guard isAgentRunning, let paneTitle else { return nil }
+        let stripped = String(paneTitle.drop { !$0.isLetter && !$0.isNumber })
+            .trimmingCharacters(in: .whitespaces)
+        guard !stripped.isEmpty, stripped != "Claude Code" else { return nil }
+        return stripped
     }
 
     /// The agent's message when it actually says something. The generic
