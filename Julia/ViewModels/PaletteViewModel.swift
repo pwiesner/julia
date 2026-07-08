@@ -578,6 +578,11 @@ final class PaletteViewModel {
                 withAnimation(.snappy(duration: 0.25)) { sessions = base }
             } else {
                 sessions = base
+                // A fresh open lands here with the selection already on
+                // row 0 — no selection *change* ever fires, so the
+                // preview must be kicked explicitly or it sits empty
+                // until the user moves.
+                updatePreview()
             }
             errorMessage = nil
             visitHistory.prune(keeping: Set(base.flatMap(\.windows).map(\.id) + base.map(\.id)))
