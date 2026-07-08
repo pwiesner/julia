@@ -374,27 +374,37 @@ final class PaletteViewModel {
             "\($0.formatted(.number.notation(.compactName))) ctx"
         }
         // Detail ladder, most informative first: the agent's real ask,
-        // its task (transcript, else Claude's own pane-title summary for
-        // pre-hook sessions), the pane's actual running command with
-        // arguments, and only then the bare process name.
+        // Claude's own live summary of the work (italic, its words), the
+        // last transcript prompt (quoted, the user's words — a fallback
+        // because an aside question can masquerade as the task), the
+        // pane's running command with arguments, the bare process name.
         let detail: PaletteItem.Detail? = if let ask = window.agentAsk {
             PaletteItem.Detail(kind: .ask, text: ask)
-        } else if let task = window.agentTask ?? window.titleTask {
+        } else if let summary = window.titleTask {
+            PaletteItem.Detail(kind: .task, text: summary)
+        } else if let task = window.agentTask {
             PaletteItem.Detail(kind: .task, text: "“\(task)”")
         } else if let commandLine = window.foregroundCommandLine {
             PaletteItem.Detail(kind: .plain, text: commandLine)
-        } else if let label = window.secondaryLabel {
+        } else if let label = window.commandLabel {
             PaletteItem.Detail(kind: .plain, text: label)
         } else {
             nil
         }
+        // The folder is identity, one of the primary things the eye
+        // hunts, so it rides the title — never sacrificed to context.
+        // Auto-named windows already promote it to the title itself.
+        let accessory = [
+            window.displayName == window.projectName ? nil : window.projectName,
+            window.gitBranch.map { "⎇ \($0)" }
+        ].compactMap(\.self).joined(separator: " · ")
         return PaletteItem(
             title: "\(session.name):\(window.index) \(window.displayName)",
             subtitle: nil,
             icon: window.agentGlyph ?? "macwindow",
             iconColor: window.agentGlyphColor,
             isStale: window.isStale,
-            titleAccessory: window.gitBranch.map { "⎇ \($0)" },
+            titleAccessory: accessory.isEmpty ? nil : accessory,
             detail: detail,
             trailingPrimary: recency,
             trailingSecondary: context,

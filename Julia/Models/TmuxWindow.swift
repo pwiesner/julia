@@ -226,24 +226,19 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         }
     }
 
-    /// Context for the detail line, complementing `displayName`: the project
-    /// when the title is a user-chosen name, otherwise the foreground command
-    /// (since the project has been promoted to the title).
-    var secondaryLabel: String? {
-        if displayName == projectName {
-            currentCommand.map { command in
-                if Self.isVersionNumber(command), agentActivity != nil {
-                    // A classified Claude session whose process title is its
-                    // version number; show what it is, not "2.1.191".
-                    "claude"
-                } else if command.hasSuffix(".exe") {
-                    String(command.dropLast(4))
-                } else {
-                    command
-                }
+    /// Foreground command cleaned for display: a Claude session whose
+    /// process title is its version number reads "claude", ".exe"
+    /// suffixes drop. The detail line's last resort — identity like the
+    /// project lives in the title accessory, not here.
+    var commandLabel: String? {
+        currentCommand.map { command in
+            if Self.isVersionNumber(command), agentActivity != nil {
+                "claude"
+            } else if command.hasSuffix(".exe") {
+                String(command.dropLast(4))
+            } else {
+                command
             }
-        } else {
-            projectName
         }
     }
 
