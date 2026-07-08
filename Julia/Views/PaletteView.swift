@@ -9,8 +9,18 @@ struct PaletteView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // The keymap page documents every way out, so the search bar
+            // is redundant there — and its height is what the keymap
+            // needs to fit without scrolling. Collapsed rather than
+            // removed: the field is the palette's keyboard-focus anchor,
+            // and esc/⇧⇧ stop working without a focused view.
             searchField
-            Divider()
+                .frame(height: isShowingHelp ? 0 : nil)
+                .opacity(isShowingHelp ? 0 : 1)
+                .clipped()
+            if !isShowingHelp {
+                Divider()
+            }
             HStack(spacing: 0) {
                 contentArea
                 // The keymap reads better full-width; nothing to preview.
@@ -56,6 +66,10 @@ struct PaletteView: View {
             viewModel.updatePreview()
         }
         .onChange(of: viewModel.searchText) { _, _ in
+            // With the search bar collapsed on the keymap page, typing
+            // must not vanish into an invisible field — it returns to
+            // the windows list with the keystroke in the search bar.
+            viewModel.exitHelpOnTyping()
             viewModel.updatePreview()
         }
         .onKeyPress(.escape) {
@@ -176,6 +190,9 @@ struct PaletteView: View {
                             screenSelectHint("/", "keymap")
                             screenSelectHint("esc", "cancel")
                         }
+                        // Chips keep their intrinsic width — without this
+                        // the trailing cap compresses ("esc" became "e…").
+                        .fixedSize()
                         .transition(.opacity)
                     }
                 }

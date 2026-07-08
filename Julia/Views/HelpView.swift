@@ -5,12 +5,17 @@ import SwiftUI
 /// the whole keymap fits without scrolling — a cheat sheet below the
 /// fold is a worse cheat sheet.
 struct HelpView: View {
-    /// Navigation: the bindings that move you around.
+    /// In-palette navigation: screens, then everything the palette does.
+    /// Screens sits left (not Anywhere) partly for cohesion and partly
+    /// for column balance — Anywhere's wrapping row weighs the right.
     private var leftSections: [(title: String, entries: [(keys: String, action: String)])] {
         [
-            ("Anywhere", [
-                (Hotkey.savedPalette.displayString, "toggle the palette"),
-                (Hotkey.savedJumpToAgent.displayString, "jump to the longest-waiting agent (press again for the next)")
+            ("Screens — double-tap ⇧", [
+                ("⇧⇧ w", "windows — home"),
+                ("⇧⇧ a", "agents overview"),
+                ("⇧⇧ t", "tidy"),
+                ("⇧⇧ /", "this page"),
+                ("type it", "\"windows\", \"agents\", \"tidy\", \"help\" too")
             ]),
             ("Palette", [
                 ("type", "search windows, sessions, branches, commands"),
@@ -27,15 +32,12 @@ struct HelpView: View {
         ]
     }
 
-    /// Maintenance and search: what you do once you're somewhere.
+    /// Global hotkeys, maintenance, and the query language.
     private var rightSections: [(title: String, entries: [(keys: String, action: String)])] {
         [
-            ("Screens — double-tap ⇧", [
-                ("⇧⇧ w", "windows — home"),
-                ("⇧⇧ a", "agents overview"),
-                ("⇧⇧ t", "tidy"),
-                ("⇧⇧ /", "this page"),
-                ("type it", "\"windows\", \"agents\", \"tidy\", \"help\" too")
+            ("Anywhere", [
+                (Hotkey.savedPalette.displayString, "toggle the palette"),
+                (Hotkey.savedJumpToAgent.displayString, "jump to the longest-waiting agent (press again for the next)")
             ]),
             ("Tidy — type \"tidy\"", [
                 ("⌘⇧W", "wrap up the selected idle agent"),

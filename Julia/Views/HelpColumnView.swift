@@ -7,31 +7,48 @@ struct HelpColumnView: View {
     let sections: [(title: String, entries: [(keys: String, action: String)])]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 10) {
             ForEach(sections, id: \.title) { section in
-                Text(section.title)
-                    .font(Design.sectionHeaderFont)
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(1.2)
-                    .padding(.top, 12)
-                    .padding(.bottom, 4)
+                // Each section is a card: the container edge glues the
+                // header to its rows, so no cap alignment can strand a
+                // header over emptiness. Inside, a Grid per section lets
+                // the cap column hug that section's widest cap — chords
+                // sit snug to their descriptions while a long-capped
+                // section ("rename <a> to <b>") widens only itself.
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(section.title)
+                        .font(Design.sectionHeaderFont)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(1.2)
 
-                ForEach(section.entries, id: \.keys) { entry in
-                    HStack(alignment: .center, spacing: 14) {
-                        // Caps right-align against the gutter so every
-                        // one touches its description — no gulf to jump.
-                        KeycapView(keys: entry.keys)
-                            .frame(width: 150, alignment: .trailing)
-                        Text(entry.action)
-                            .font(.system(size: 13.5))
-                            .foregroundStyle(.secondary)
+                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 7) {
+                        ForEach(section.entries, id: \.keys) { entry in
+                            GridRow {
+                                KeycapView(keys: entry.keys)
+                                    .gridColumnAlignment(.trailing)
+                                Text(entry.action)
+                                    .font(.system(size: 13.5))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
-                    .padding(.vertical, 3)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .background {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.primary.opacity(0.04))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(.primary.opacity(0.07), lineWidth: 1)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, 8)
     }
 }
 

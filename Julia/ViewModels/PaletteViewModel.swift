@@ -794,6 +794,15 @@ final class PaletteViewModel {
         }
     }
 
+    /// Typing on the keymap page returns to the windows list — the page
+    /// hides the search bar, so keystrokes must never land invisibly.
+    func exitHelpOnTyping() {
+        if browseList == .help, !searchText.isEmpty {
+            browseList = .windows
+            selectedIndex = 0
+        }
+    }
+
     /// Leaves the tidy or help view; returns false if we weren't in one.
     func exitOverlayList() -> Bool {
         guard browseList == .tidy || browseList == .help else { return false }
