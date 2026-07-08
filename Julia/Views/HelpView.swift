@@ -15,6 +15,7 @@ struct HelpView: View {
             ("Palette", [
                 ("type", "search windows, sessions, branches, commands"),
                 ("↑ ↓ ↵", "select and switch"),
+                ("⇧↵", "create a session named after the query"),
                 ("⌘1–9", "activate row 1–9"),
                 ("⇥", "flip between windows and agents"),
                 ("⌘B", "toggle the sessions sidebar"),

@@ -323,8 +323,12 @@ actor TmuxService {
         _ = try await execute(["switch-client", "-t", sessionName])
     }
 
-    func createSession(name: String) async throws {
-        _ = try await execute(["new-session", "-d", "-s", name])
+    func createSession(name: String, workingDirectory: String? = nil) async throws {
+        // Always pass -c: without it the session inherits julia's own
+        // cwd, which is "/" when the app was launched from Finder.
+        let directory = workingDirectory
+            ?? FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false)
+        _ = try await execute(["new-session", "-d", "-s", name, "-c", directory])
         _ = try await execute(["switch-client", "-t", name])
     }
 
@@ -391,7 +395,7 @@ actor TmuxService {
             guard let name = command.argument else {
                 throw TmuxError.missingArgument("session name")
             }
-            try await createSession(name: name)
+            try await createSession(name: name, workingDirectory: command.workingDirectory)
 
         case .renameSession:
             guard let newName = command.argument,

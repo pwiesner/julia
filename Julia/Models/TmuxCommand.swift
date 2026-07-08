@@ -48,6 +48,9 @@ struct TmuxCommand: Identifiable, Sendable {
     let type: TmuxCommandType
     let argument: String?
     let targetSession: String?
+    /// Starting directory for commands that create things. Julia's own
+    /// cwd is "/" when launched from Finder — never a sane inheritance.
+    let workingDirectory: String?
 
     var displayText: String {
         switch type {
@@ -94,10 +97,16 @@ struct TmuxCommand: Identifiable, Sendable {
         }
     }
 
-    init(type: TmuxCommandType, argument: String? = nil, targetSession: String? = nil) {
+    init(
+        type: TmuxCommandType,
+        argument: String? = nil,
+        targetSession: String? = nil,
+        workingDirectory: String? = nil
+    ) {
         self.type = type
         self.argument = argument
         self.targetSession = targetSession
+        self.workingDirectory = workingDirectory
     }
 }
 
@@ -126,6 +135,10 @@ struct PaletteItem: Identifiable, Sendable {
     var sectionTitle: String? = nil
     /// Stale rows render dimmed until hovered or selected.
     var isStale: Bool = false
+    /// Rows that create things activate only via shift-return or an
+    /// explicit click — plain return must never conjure a session out
+    /// of a typo (see the graveyard of sessions named "13").
+    var requiresShiftEnter: Bool = false
     /// Dimmed context beside the title, e.g. the branch ("⎇ main").
     var titleAccessory: String? = nil
     /// The single context line under the title; see `Detail`.

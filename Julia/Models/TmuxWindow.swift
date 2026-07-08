@@ -93,6 +93,19 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
     }
 
+    /// Where the window lives when that's not a project: "~" or "/" —
+    /// just enough to explain an otherwise naked shell.
+    var locationLabel: String? {
+        guard projectName == nil, let currentPath else { return nil }
+        let path = Self.trimmingTrailingSlash(currentPath)
+        let home = Self.trimmingTrailingSlash(
+            FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false)
+        )
+        if path == home { return "~" }
+        if path == "/" { return "/" }
+        return nil
+    }
+
     /// Foreground commands that indicate a coding agent is running in the pane.
     private static let agentCommands: Set<String> = ["claude", "claude.exe", "codex", "aider", "gemini"]
 

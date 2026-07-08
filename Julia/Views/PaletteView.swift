@@ -72,9 +72,14 @@ struct PaletteView: View {
             viewModel.selectPrevious()
             return .handled
         }
-        .onKeyPress(.return) {
+        .onKeyPress(keys: [.return]) { press in
+            // Shift-return creates a session named after the query; plain
+            // return only ever selects. Creation must be unmistakable.
+            let shiftHeld = press.modifiers.contains(.shift)
             Task {
-                let shouldDismiss = await viewModel.executeSelected()
+                let shouldDismiss = shiftHeld
+                    ? await viewModel.createSessionFromQuery()
+                    : await viewModel.executeSelected()
                 if shouldDismiss {
                     onDismiss()
                 }
@@ -285,7 +290,9 @@ struct PaletteView: View {
                                 .onTapGesture {
                                     viewModel.selectedIndex = index
                                     Task {
-                                        let shouldDismiss = await viewModel.executeSelected()
+                                        // A click is deliberate; it may
+                                        // activate shift-return-gated rows.
+                                        let shouldDismiss = await viewModel.executeSelected(fromClick: true)
                                         if shouldDismiss {
                                             onDismiss()
                                         }

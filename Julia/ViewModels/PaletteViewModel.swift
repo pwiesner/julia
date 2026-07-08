@@ -386,16 +386,18 @@ final class PaletteViewModel {
             PaletteItem.Detail(kind: .task, text: "“\(task)”")
         } else if let commandLine = window.foregroundCommandLine {
             PaletteItem.Detail(kind: .plain, text: commandLine)
-        } else if let label = window.commandLabel {
+        } else if let label = window.commandLabel, label != window.displayName {
+            // Skip when it just repeats the title ("zsh" under "zsh").
             PaletteItem.Detail(kind: .plain, text: label)
         } else {
             nil
         }
         // The folder is identity, one of the primary things the eye
         // hunts, so it rides the title — never sacrificed to context.
-        // Auto-named windows already promote it to the title itself.
+        // Auto-named windows already promote it to the title itself;
+        // homeless windows at ~ or / say so instead of saying nothing.
         let accessory = [
-            window.displayName == window.projectName ? nil : window.projectName,
+            (window.displayName == window.projectName ? nil : window.projectName) ?? window.locationLabel,
             window.gitBranch.map { "⎇ \($0)" }
         ].compactMap(\.self).joined(separator: " · ")
         return PaletteItem(
@@ -811,13 +813,47 @@ final class PaletteViewModel {
         selectedIndex = max(selectedIndex - 1, 0)
     }
 
+    /// A new-session command that starts where the user is working —
+    /// the current window's directory — rather than wherever julia's
+    /// process happens to live.
+    private func newSessionCommand(named name: String) -> TmuxCommand {
+        TmuxCommand(
+            type: .newSession,
+            argument: name,
+            workingDirectory: sessions.flatMap(\.windows).first(where: \.isCurrent)?.currentPath
+        )
+    }
+
+    /// The shift-return path: creates a session named after the query,
+    /// or switches to it if it already exists.
+    func createSessionFromQuery() async -> Bool {
+        guard mode == .browsing else { return false }
+        let name = searchText.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return false }
+        if sessions.contains(where: { $0.name.lowercased() == name.lowercased() }) {
+            do {
+                try await tmuxService.switchToSession(name)
+                recordSessionVisit(named: name)
+                return true
+            } catch {
+                errorMessage = error.localizedDescription
+                return false
+            }
+        }
+        await execute(action: .executeCommand(newSessionCommand(named: name)))
+        return errorMessage == nil
+    }
+
     /// Returns `true` if the palette should dismiss after this action, `false` to stay open.
-    func executeSelected() async -> Bool {
+    /// Rows gated behind shift-return only activate from an explicit
+    /// click (`fromClick`), never a stray return.
+    func executeSelected(fromClick: Bool = false) async -> Bool {
         switch mode {
         case .browsing:
             let items = filteredItems
             guard selectedIndex < items.count else { return false }
             let item = items[selectedIndex]
+            if item.requiresShiftEnter, !fromClick { return false }
 
             // Clicking a chained-flow command transitions into the flow
             // instead of dismissing the palette.
@@ -964,7 +1000,7 @@ final class PaletteViewModel {
         switch firstPart {
         case "new", "n":
             if parts.count > 1 {
-                return TmuxCommand(type: .newSession, argument: parts[1])
+                return newSessionCommand(named: parts[1])
             }
 
         case "kill", "k":
@@ -1030,13 +1066,16 @@ final class PaletteViewModel {
             items.append(Self.helpCommandItem)
         }
 
-        // If query might be a new session name
+        // If query might be a new session name. Shift-return only:
+        // plain return on this row created a graveyard of sessions
+        // named after mistyped window numbers.
         if !sessions.contains(where: { $0.name.lowercased() == lowerQuery }) {
             items.append(PaletteItem(
                 title: "Create session: \(query)",
-                subtitle: "new \(query)",
+                subtitle: "⇧↵ to create",
                 icon: TmuxCommandType.newSession.icon,
-                action: .executeCommand(TmuxCommand(type: .newSession, argument: query))
+                requiresShiftEnter: true,
+                action: .executeCommand(newSessionCommand(named: query))
             ))
         }
 
