@@ -399,7 +399,7 @@ final class PaletteViewModel {
             window.gitBranch.map { "⎇ \($0)" }
         ].compactMap(\.self).joined(separator: " · ")
         return PaletteItem(
-            title: "\(session.name):\(window.index) \(window.displayName)",
+            title: "\(session.name):\(window.index) \(window.displayTitle)",
             subtitle: nil,
             icon: window.agentGlyph ?? "macwindow",
             iconColor: window.agentGlyphColor,

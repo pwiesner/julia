@@ -318,7 +318,7 @@ struct PaletteView: View {
             if let window = viewModel.selectedWindow, viewModel.previewContent != nil {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 8) {
-                        Text(window.displayName)
+                        Text(window.displayTitle)
                             .font(.system(size: 13, weight: .semibold))
                             .lineLimit(1)
 

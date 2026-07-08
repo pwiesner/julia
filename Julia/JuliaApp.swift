@@ -177,7 +177,7 @@ struct MenuBarView: View {
     /// Menu items get one modest line: where the agent is, then a short
     /// slice of its task, which is what tells same-project agents apart.
     private static func menuTitle(for window: TmuxWindow) -> String {
-        let place = "\(window.sessionName):\(window.index) \(window.displayName)"
+        let place = "\(window.sessionName):\(window.index) \(window.displayTitle)"
         guard var task = window.agentTask ?? window.titleTask else { return place }
         if task.count > 40 {
             task = task.prefix(40).trimmingCharacters(in: .whitespaces) + "…"

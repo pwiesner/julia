@@ -226,6 +226,13 @@ struct TmuxWindow: Identifiable, Hashable, Sendable {
         }
     }
 
+    /// `displayName` with ls -F semantics: folder-derived titles carry a
+    /// trailing slash, so "julia/" (just the cwd) and "julia" (a name
+    /// someone chose) read differently at a glance.
+    var displayTitle: String {
+        hasAutomaticName && projectName != nil ? displayName + "/" : displayName
+    }
+
     /// Foreground command cleaned for display: a Claude session whose
     /// process title is its version number reads "claude", ".exe"
     /// suffixes drop. The detail line's last resort — identity like the

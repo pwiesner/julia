@@ -151,7 +151,7 @@ final class AgentMonitorService {
                     : "Finished — ready for you"
                 notifications.notify(
                     windowId: window.id,
-                    title: window.displayName,
+                    title: window.displayTitle,
                     body: window.agentMessage ?? fallback,
                     sessionName: window.sessionName,
                     windowIndex: window.index
