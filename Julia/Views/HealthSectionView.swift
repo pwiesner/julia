@@ -29,7 +29,13 @@ struct HealthSectionView: View {
             }
         }
         .task {
-            dependencies = await HealthService.check()
+            // Rows land as each probe finishes; a slow gh check can't
+            // hold tmux and beeper hostage at "Checking…".
+            dependencies = []
+            for await dependency in HealthService.check() {
+                dependencies.append(dependency)
+                dependencies.sort { $0.rank < $1.rank }
+            }
         }
     }
 
