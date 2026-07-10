@@ -14,9 +14,18 @@ struct HealthSectionView: View {
             } else {
                 ForEach(dependencies) { dependency in
                     LabeledContent {
-                        Text(dependency.detail)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
+                        HStack(spacing: 10) {
+                            Text(dependency.detail)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.trailing)
+                            // Hooks modify the user's tmux server, so
+                            // installing is a button, never automatic.
+                            if HealthService.canInstallVisitHooks(dependency) {
+                                Button("Install") {
+                                    installVisitHooks()
+                                }
+                            }
+                        }
                     } label: {
                         HStack(spacing: 8) {
                             Circle()
@@ -31,6 +40,17 @@ struct HealthSectionView: View {
         .task {
             // Rows land as each probe finishes; a slow gh check can't
             // hold tmux and beeper hostage at "Checking…".
+            dependencies = []
+            for await dependency in HealthService.check() {
+                dependencies.append(dependency)
+                dependencies.sort { $0.rank < $1.rank }
+            }
+        }
+    }
+
+    private func installVisitHooks() {
+        Task {
+            await HealthService.installVisitHooks()
             dependencies = []
             for await dependency in HealthService.check() {
                 dependencies.append(dependency)

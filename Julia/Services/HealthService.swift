@@ -44,6 +44,8 @@ enum HealthService {
         }
     }
 
+    /// The one opt-in dependency: julia never touches tmux hooks on its
+    /// own — the health row offers an install button instead.
     private static func checkVisitHooks() async -> Dependency {
         guard TmuxService.installedPath() != nil else {
             return Dependency(name: "visit hooks", rank: 2, level: .limited, detail: "needs tmux")
@@ -51,7 +53,18 @@ enum HealthService {
         let hooks = (try? await TmuxService().globalHooks()) ?? ""
         return hooks.contains("visits.log")
             ? Dependency(name: "visit hooks", rank: 2, level: .good, detail: "native switches feed frecency")
-            : Dependency(name: "visit hooks", rank: 2, level: .limited, detail: "not installed — only palette jumps rank")
+            : Dependency(name: "visit hooks", rank: 2, level: .limited, detail: "only palette jumps rank")
+    }
+
+    /// True when the visit hooks aren't installed and could be — drives
+    /// the install button on the health row.
+    static func canInstallVisitHooks(_ dependency: Dependency) -> Bool {
+        dependency.name == "visit hooks" && dependency.level == .limited
+            && TmuxService.installedPath() != nil
+    }
+
+    static func installVisitHooks() async {
+        try? await TmuxService().installVisitHooks(logPath: VisitIngestService.logPath)
     }
 
     private static func checkTmux() async -> Dependency {

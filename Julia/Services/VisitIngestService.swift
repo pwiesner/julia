@@ -16,10 +16,11 @@ import Foundation
 @MainActor
 final class VisitIngestService {
     private let history: VisitHistoryService
-    private let tmuxService = TmuxService()
 
-    private static let directory = URL.homeDirectory.appending(path: ".local/state/julia")
-    private static let logURL = directory.appending(path: "visits.log")
+    private nonisolated static let directory = URL.homeDirectory.appending(path: ".local/state/julia")
+    private nonisolated static let logURL = directory.appending(path: "visits.log")
+    /// Where the hooks report; the settings install button needs it too.
+    nonisolated static var logPath: String { logURL.path(percentEncoded: false) }
     /// Below this, an immediately-abandoned stop is pass-through.
     private static let chainWindow: TimeInterval = 2
 
@@ -32,8 +33,13 @@ final class VisitIngestService {
         self.history = history
     }
 
+    /// Prepares the log and watches it. Deliberately does NOT install
+    /// the tmux hooks — modifying someone's tmux server is theirs to
+    /// authorize, via the install button on the settings health row.
+    /// The watcher runs regardless, so ingestion starts the moment the
+    /// hooks exist.
     func start() {
-        let path = Self.logURL.path(percentEncoded: false)
+        let path = Self.logPath
         try? FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true)
         if !FileManager.default.fileExists(atPath: path) {
             FileManager.default.createFile(atPath: path, contents: nil)
@@ -42,9 +48,6 @@ final class VisitIngestService {
         // stale visits as if fresh would distort the ranking's recency.
         offset = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? UInt64) ?? 0
 
-        Task {
-            try? await tmuxService.installVisitHooks(logPath: path)
-        }
         watch()
     }
 
