@@ -2,9 +2,9 @@ import Foundation
 
 /// Remembers when the user jumped to each tmux window or session so the
 /// palette can order by frecency — recent visits weigh most, but a window
-/// visited constantly all day outranks one visited once an hour ago. Only
-/// jumps made through Julia are seen; native tmux switches don't update
-/// the history.
+/// visited constantly all day outranks one visited once an hour ago.
+/// Fed from two sides: julia's own jumps directly, and native tmux
+/// switches via VisitIngestService's hook log.
 @MainActor
 final class VisitHistoryService {
     private static let defaultsKey = "visitHistory.v2"
@@ -16,6 +16,12 @@ final class VisitHistoryService {
     /// Visit timestamps keyed by tmux id. Window ids ("@5") and session
     /// ids ("$3") share the dictionary; tmux keeps the namespaces distinct.
     private var visits: [String: [Date]]
+
+    /// Wall-clock of the latest record per id, for hook-echo detection —
+    /// julia's own jumps also fire the tmux hooks, and the ingest side
+    /// must be able to tell "julia just recorded this" from a native
+    /// switch.
+    private var lastRecordedAt: [String: Date] = [:]
 
     init() {
         let defaults = UserDefaults.standard
@@ -31,14 +37,23 @@ final class VisitHistoryService {
         }
     }
 
-    func recordVisit(id: String) {
+    func recordVisit(id: String, at date: Date = .now) {
         var dates = visits[id, default: []]
-        dates.append(.now)
+        dates.append(date)
         if dates.count > Self.maxVisitsPerItem {
             dates.removeFirst(dates.count - Self.maxVisitsPerItem)
         }
         visits[id] = dates
+        lastRecordedAt[id] = .now
         save()
+    }
+
+    /// True if a visit to this id was recorded within the interval —
+    /// measured in wall-clock, since it exists to catch hook echoes of
+    /// records that just happened.
+    func recordedRecently(id: String, within interval: TimeInterval) -> Bool {
+        guard let recorded = lastRecordedAt[id] else { return false }
+        return Date.now.timeIntervalSince(recorded) < interval
     }
 
     /// Exponentially decayed visit count; nil if never visited.

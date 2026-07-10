@@ -24,7 +24,18 @@ enum HealthService {
     static func check() async -> [Dependency] {
         async let tmux = checkTmux()
         async let gh = checkGh()
-        return await [tmux, checkBeeper(), gh]
+        async let visitHooks = checkVisitHooks()
+        return await [tmux, checkBeeper(), visitHooks, gh]
+    }
+
+    private static func checkVisitHooks() async -> Dependency {
+        guard TmuxService.installedPath() != nil else {
+            return Dependency(name: "visit hooks", level: .limited, detail: "needs tmux")
+        }
+        let hooks = (try? await TmuxService().globalHooks()) ?? ""
+        return hooks.contains("visits.log")
+            ? Dependency(name: "visit hooks", level: .good, detail: "native switches feed frecency")
+            : Dependency(name: "visit hooks", level: .limited, detail: "not installed — only palette jumps rank")
     }
 
     private static func checkTmux() async -> Dependency {

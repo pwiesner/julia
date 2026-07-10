@@ -2,7 +2,8 @@ import SwiftUI
 
 @main
 struct JuliaApp: App {
-    @State private var viewModel = PaletteViewModel()
+    @State private var viewModel: PaletteViewModel
+    @State private var visitIngest: VisitIngestService
     @State private var paletteController = PaletteWindowController()
     @State private var hotkeyService = HotkeyService()
     @State private var agentMonitor = AgentMonitorService()
@@ -31,6 +32,11 @@ struct JuliaApp: App {
     }
 
     init() {
+        // One shared visit history: the palette records julia's own
+        // jumps into it, the ingest service records native switches.
+        let visitHistory = VisitHistoryService()
+        _viewModel = State(initialValue: PaletteViewModel(visitHistory: visitHistory))
+        _visitIngest = State(initialValue: VisitIngestService(history: visitHistory))
         setupHotkey()
     }
 
@@ -52,6 +58,7 @@ struct JuliaApp: App {
             notificationService.activate()
             agentMonitor.notifications = notificationService
             agentMonitor.start()
+            visitIngest.start()
         }
     }
 

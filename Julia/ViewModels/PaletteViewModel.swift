@@ -47,12 +47,18 @@ final class PaletteViewModel {
     var selectedPullRequest: PullRequestService.PullRequest?
 
     private let tmuxService = TmuxService()
-    private let visitHistory = VisitHistoryService()
+    private let visitHistory: VisitHistoryService
     private let pullRequests = PullRequestService()
     private var previewTask: Task<Void, Never>?
     private var pullRequestTask: Task<Void, Never>?
     private var screenSelectMonitor: Any?
     private var lastShiftTapAt = Date.distantPast
+
+    /// The history is shared with VisitIngestService — both write to it,
+    /// and two instances would silently overwrite each other's saves.
+    init(visitHistory: VisitHistoryService = VisitHistoryService()) {
+        self.visitHistory = visitHistory
+    }
     private var loadGeneration = 0
     private let beeperMonitor = BeeperMonitor()
     private var liveUpdatesTask: Task<Void, Never>?

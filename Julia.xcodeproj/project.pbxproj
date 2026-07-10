@@ -21,6 +21,7 @@
 		E01000041 /* PullRequestService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000041 /* PullRequestService.swift */; };
 		E01000044 /* HealthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000044 /* HealthService.swift */; };
 		E01000046 /* SeenLedgerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000046 /* SeenLedgerService.swift */; };
+		E01000047 /* VisitIngestService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000047 /* VisitIngestService.swift */; };
 		E01000042 /* HelpColumnView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000042 /* HelpColumnView.swift */; };
 		E01000043 /* KeycapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000043 /* KeycapView.swift */; };
 		E01000045 /* HealthSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02000045 /* HealthSectionView.swift */; };
@@ -57,6 +58,7 @@
 		E02000041 /* PullRequestService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestService.swift; sourceTree = "<group>"; };
 		E02000044 /* HealthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthService.swift; sourceTree = "<group>"; };
 		E02000046 /* SeenLedgerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeenLedgerService.swift; sourceTree = "<group>"; };
+		E02000047 /* VisitIngestService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitIngestService.swift; sourceTree = "<group>"; };
 		E02000042 /* HelpColumnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpColumnView.swift; sourceTree = "<group>"; };
 		E02000043 /* KeycapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeycapView.swift; sourceTree = "<group>"; };
 		E02000045 /* HealthSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSectionView.swift; sourceTree = "<group>"; };
@@ -145,6 +147,7 @@
 				E02000041 /* PullRequestService.swift */,
 				E02000044 /* HealthService.swift */,
 				E02000046 /* SeenLedgerService.swift */,
+				E02000047 /* VisitIngestService.swift */,
 				E02000028 /* AgentMonitorService.swift */,
 				E02000033 /* NotificationService.swift */,
 				E02000006 /* HotkeyService.swift */,
@@ -271,6 +274,7 @@
 				E01000041 /* PullRequestService.swift in Sources */,
 				E01000044 /* HealthService.swift in Sources */,
 				E01000046 /* SeenLedgerService.swift in Sources */,
+				E01000047 /* VisitIngestService.swift in Sources */,
 				E01000028 /* AgentMonitorService.swift in Sources */,
 				E01000029 /* MenuBarLabel.swift in Sources */,
 				E01000034 /* HelpView.swift in Sources */,

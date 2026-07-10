@@ -308,6 +308,30 @@ actor TmuxService {
         return PaneCapture(content: text, cols: cols, rows: rows)
     }
 
+    /// The server's global hooks, for install checks and the health page.
+    func globalHooks() async throws -> String {
+        try await execute(["show-hooks", "-g"])
+    }
+
+    /// Installs the hooks that report native window switches to julia's
+    /// visit log. Idempotent, and appending (-a) so any hooks the user
+    /// already has survive. The ids are single-quoted for the hook's
+    /// shell — a session id like "$3" must reach the log as text, not
+    /// expand as a variable — while $(date) stays outside them so the
+    /// timestamp is evaluated when the hook fires.
+    func installVisitHooks(logPath: String) async throws {
+        let lines = ((try? await globalHooks()) ?? "").components(separatedBy: "\n")
+        let report = "run-shell \"echo '#{window_id} #{session_id}' $(date +%s) >> \(logPath)\""
+        // client-session-changed covers switching sessions; there is no
+        // "after-switch-client" hook. Checked per hook, so a partial
+        // install (or a future added hook) completes itself.
+        for hook in ["after-select-window", "client-session-changed"] {
+            let installed = lines.contains { $0.hasPrefix(hook + "[") && $0.contains("visits.log") }
+            guard !installed else { continue }
+            _ = try await execute(["set-hook", "-ga", hook, report])
+        }
+    }
+
     func isServerRunning() async -> Bool {
         do {
             _ = try await execute(["list-sessions"])
