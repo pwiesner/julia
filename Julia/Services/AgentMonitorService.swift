@@ -30,6 +30,12 @@ final class AgentMonitorService {
     private let seenLedger = SeenLedgerService()
     /// The ask each window was last notified about, to notify once per ask.
     private var notifiedAskAt: [String: Date] = [:]
+    /// True while the palette is on screen. Banners hold while it's up —
+    /// the palette already narrates state flips in front of the user, so
+    /// a banner on top is pure interruption. An ask still waiting when
+    /// the palette hides banners then: closing without acting is the
+    /// "walked away" case the banner exists for.
+    private var isPaletteVisible = false
     /// Fallback cadence for sessions not reporting through beeper hooks;
     /// hook-reporting sessions update the instant their state changes.
     private static let scanInterval: Duration = .seconds(30)
@@ -61,6 +67,24 @@ final class AgentMonitorService {
         beeperTask?.cancel()
         beeperTask = nil
         beeperMonitor.stop()
+    }
+
+    func paletteDidShow() {
+        isPaletteVisible = true
+    }
+
+    /// Releases held banners by rescanning rather than posting from the
+    /// current state: a jump from the palette makes its target the
+    /// current window, but until a scan runs the target still sits in
+    /// waitingWindows — posting directly would banner the very agent the
+    /// user just went to. The settle delay lets the tmux switch land
+    /// before the scan reads who is current.
+    func paletteDidHide() {
+        isPaletteVisible = false
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            await self?.scan()
+        }
     }
 
     /// Switches to the unseen agent that has been waiting longest and marks
@@ -144,7 +168,7 @@ final class AgentMonitorService {
         guard let notifications else { return }
         let mode = NotificationMode.saved
 
-        if mode != .off {
+        if mode != .off && !isPaletteVisible {
             for window in waitingWindows {
                 if mode == .permissionRequests && window.agentActivity != .waitingForPermission {
                     continue

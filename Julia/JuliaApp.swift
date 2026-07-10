@@ -42,9 +42,10 @@ struct JuliaApp: App {
 
     private func setupHotkey() {
         Task { @MainActor in
-            paletteController.onHide = { [viewModel] in
+            paletteController.onHide = { [viewModel, agentMonitor] in
                 viewModel.stopPreview()
                 viewModel.paletteDidHide()
+                agentMonitor.paletteDidHide()
             }
             hotkeyService.register(.togglePalette, hotkey: .savedPalette) { [self] in
                 togglePalette()
@@ -73,6 +74,7 @@ struct JuliaApp: App {
             onDismiss: { paletteController.hide() }
         )
         paletteController.show(content: paletteView)
+        agentMonitor.paletteDidShow()
     }
 
     /// Opens the palette directly on the keymap page — the menu bar path
