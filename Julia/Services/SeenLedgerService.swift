@@ -9,8 +9,10 @@ final class SeenLedgerService {
     private static let defaultsKey = "seenLedger.v1"
 
     /// Re-marking the current window happens on every scan; skip the
-    /// disk write when the recorded time is already this fresh. Grace
-    /// comparisons tolerate the staleness — they operate in minutes.
+    /// disk write when the saved time is already this fresh. Only the
+    /// write is throttled — the in-memory mark must stay exact, because
+    /// beeper-backed waiting filters compare it against sub-second ask
+    /// times. A crash loses at most this much freshness.
     private static let rewriteThreshold: TimeInterval = 15
 
     /// When the user last looked at each window, keyed by tmux window id.
@@ -30,10 +32,11 @@ final class SeenLedgerService {
     }
 
     func markSeen(_ id: String) {
-        if let existing = seenAt[id], Date.now.timeIntervalSince(existing) < Self.rewriteThreshold {
+        let existing = seenAt[id]
+        seenAt[id] = .now
+        if let existing, Date.now.timeIntervalSince(existing) < Self.rewriteThreshold {
             return
         }
-        seenAt[id] = .now
         save()
     }
 

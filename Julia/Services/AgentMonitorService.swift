@@ -98,6 +98,12 @@ final class AgentMonitorService {
         waitingWindows = windows
             .compactMap { window -> TmuxWindow? in
                 guard let status = statuses[window.id], status.activity != .working else { return nil }
+                // The user is on it right now: whatever it asks is being
+                // seen as it happens. Checked here, not just via the seen
+                // ledger — an ask can land mid-scan, after the mark-seen
+                // pass has already run, and would otherwise banner the
+                // very window the user is watching.
+                guard !window.isCurrent else { return nil }
                 var window = window
                 window.agentActivity = status.activity
                 window.agentMessage = status.message
