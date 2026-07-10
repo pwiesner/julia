@@ -25,8 +25,9 @@ final class AgentMonitorService {
     private let beeperMonitor = BeeperMonitor()
     private var monitorTask: Task<Void, Never>?
     private var beeperTask: Task<Void, Never>?
-    /// When the user last looked at each window, keyed by window id.
-    private var seenAt: [String: Date] = [:]
+    /// When the user last looked at each window; disk-backed so a julia
+    /// restart doesn't resurrect the badge for already-seen asks.
+    private let seenLedger = SeenLedgerService()
     /// The ask each window was last notified about, to notify once per ask.
     private var notifiedAskAt: [String: Date] = [:]
     /// Fallback cadence for sessions not reporting through beeper hooks;
@@ -69,7 +70,7 @@ final class AgentMonitorService {
         guard let target = waitingWindows.first(where: { !$0.isCurrent }) ?? waitingWindows.first
         else { return }
 
-        seenAt[target.id] = .now
+        seenLedger.markSeen(target.id)
         waitingWindows.removeAll { $0.id == target.id }
 
         Task {
@@ -89,9 +90,9 @@ final class AgentMonitorService {
 
         // Being on a window counts as seeing whatever it was asking.
         for window in windows where window.isCurrent {
-            seenAt[window.id] = .now
+            seenLedger.markSeen(window.id)
         }
-        seenAt = seenAt.filter { key, _ in windows.contains { $0.id == key } }
+        seenLedger.prune(keeping: Set(windows.map(\.id)))
 
         let statuses = await tmuxService.agentActivities(in: windows)
         waitingWindows = windows
@@ -110,7 +111,7 @@ final class AgentMonitorService {
                 // redraw — output that lands right after the seen mark and
                 // masquerades as a fresh ask. Grant those a grace period.
                 let asked = window.askedAt ?? .distantPast
-                let seen = seenAt[window.id] ?? .distantPast
+                let seen = seenLedger[window.id] ?? .distantPast
                 let graceAfterSeen: TimeInterval = window.agentSince == nil ? 90 : 0
                 guard asked > seen.addingTimeInterval(graceAfterSeen) else { return nil }
                 return window
@@ -176,7 +177,7 @@ final class AgentMonitorService {
         if let target = waitingWindows.first(where: {
             $0.sessionName == sessionName && $0.index == windowIndex
         }) {
-            seenAt[target.id] = .now
+            seenLedger.markSeen(target.id)
             waitingWindows.removeAll { $0.id == target.id }
         }
         Task {
