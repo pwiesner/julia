@@ -581,7 +581,12 @@ final class PaletteViewModel {
             // Quiet reloads animate: rows sliding to their new place
             // narrate what changed; teleporting rows just look haunted.
             if quiet {
-                withAnimation(.snappy(duration: 0.25)) { sessions = base }
+                // Publishing the bare fast pass would blank every agent
+                // field until the slow pass lands, and screens whose
+                // membership needs agent state (agents, tidy) would
+                // flash their empty view on every live reload.
+                let carried = Self.carryingAgentState(from: sessions, onto: base)
+                withAnimation(.snappy(duration: 0.25)) { sessions = carried }
             } else {
                 sessions = base
                 // A fresh open lands here with the selection already on
@@ -630,6 +635,36 @@ final class PaletteViewModel {
             guard generation == loadGeneration else { return }
             errorMessage = error.localizedDescription
             sessions = []
+        }
+    }
+
+    /// Grafts the previous listing's agent classification onto freshly
+    /// listed sessions, matched by window id. The fast pass knows nothing
+    /// about agents, so carried state bridges the gap until the slow
+    /// pass replaces it with a fresh classification.
+    private static func carryingAgentState(
+        from previous: [TmuxSession],
+        onto fresh: [TmuxSession]
+    ) -> [TmuxSession] {
+        let previousWindows = Dictionary(
+            previous.flatMap(\.windows).map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return fresh.map { session in
+            var session = session
+            session.windows = session.windows.map { window in
+                guard let old = previousWindows[window.id] else { return window }
+                var window = window
+                window.agentActivity = old.agentActivity
+                window.agentMessage = old.agentMessage
+                window.agentSince = old.agentSince
+                window.agentPaneId = old.agentPaneId
+                window.agentTask = old.agentTask
+                window.agentContextTokens = old.agentContextTokens
+                window.foregroundCommandLine = old.foregroundCommandLine
+                return window
+            }
+            return session
         }
     }
 
