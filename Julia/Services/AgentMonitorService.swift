@@ -36,9 +36,17 @@ final class AgentMonitorService {
     /// the palette hides banners then: closing without acting is the
     /// "walked away" case the banner exists for.
     private var isPaletteVisible = false
+    /// Asks on the current window that have gone unanswered past the
+    /// nudge delay. Not part of waitingWindows — the user is on them, so
+    /// they don't badge or list — but they do banner: front and center
+    /// isn't always looked at.
+    private var overdueCurrentAsks: [TmuxWindow] = []
     /// Fallback cadence for sessions not reporting through beeper hooks;
     /// hook-reporting sessions update the instant their state changes.
     private static let scanInterval: Duration = .seconds(30)
+    /// How long an ask on the current window can sit unanswered before
+    /// it banners anyway.
+    private static let currentWindowNudgeDelay: TimeInterval = 60
 
     func start() {
         guard monitorTask == nil else { return }
@@ -119,33 +127,46 @@ final class AgentMonitorService {
         seenLedger.prune(keeping: Set(windows.map(\.id)))
 
         let statuses = await tmuxService.agentActivities(in: windows)
-        waitingWindows = windows
-            .compactMap { window -> TmuxWindow? in
-                guard let status = statuses[window.id], status.activity != .working else { return nil }
-                // The user is on it right now: whatever it asks is being
-                // seen as it happens. Checked here, not just via the seen
-                // ledger — an ask can land mid-scan, after the mark-seen
-                // pass has already run, and would otherwise banner the
-                // very window the user is watching.
-                guard !window.isCurrent else { return nil }
-                var window = window
-                window.agentActivity = status.activity
-                window.agentMessage = status.message
-                window.agentSince = status.since
-                window.agentTask = status.task
-                // Day-old prompts are idle, not waiting; don't badge them.
-                guard window.isAwaitingUser else { return nil }
-                // Already seen since it asked — the user knows. Windows
-                // without beeper's exact timestamps use pane activity as
-                // the ask time, and merely visiting one makes Claude
-                // redraw — output that lands right after the seen mark and
-                // masquerades as a fresh ask. Grant those a grace period.
-                let asked = window.askedAt ?? .distantPast
-                let seen = seenLedger[window.id] ?? .distantPast
-                let graceAfterSeen: TimeInterval = window.agentSince == nil ? 90 : 0
-                guard asked > seen.addingTimeInterval(graceAfterSeen) else { return nil }
-                return window
+        var waiting: [TmuxWindow] = []
+        var overdue: [TmuxWindow] = []
+        for var window in windows {
+            guard let status = statuses[window.id], status.activity != .working else { continue }
+            window.agentActivity = status.activity
+            window.agentMessage = status.message
+            window.agentSince = status.since
+            window.agentTask = status.task
+            // Day-old prompts are idle, not waiting; don't badge them.
+            guard window.isAwaitingUser else { continue }
+            let asked = window.askedAt ?? .distantPast
+
+            if window.isCurrent {
+                // The user is on it, seeing the ask as it happens — no
+                // banner, no badge. Checked here, not just via the seen
+                // ledger, because an ask can land mid-scan, after the
+                // mark-seen pass has already run. But front and center
+                // isn't always looked at: an ask still unanswered after
+                // the nudge delay banners anyway. Beeper-exact ask times
+                // only — a scraped ask time is pane activity, which
+                // stray output keeps perpetually young.
+                if window.agentSince != nil,
+                   Date.now.timeIntervalSince(asked) >= Self.currentWindowNudgeDelay {
+                    overdue.append(window)
+                }
+                continue
             }
+
+            // Already seen since it asked — the user knows. Windows
+            // without beeper's exact timestamps use pane activity as
+            // the ask time, and merely visiting one makes Claude
+            // redraw — output that lands right after the seen mark and
+            // masquerades as a fresh ask. Grant those a grace period.
+            let seen = seenLedger[window.id] ?? .distantPast
+            let graceAfterSeen: TimeInterval = window.agentSince == nil ? 90 : 0
+            guard asked > seen.addingTimeInterval(graceAfterSeen) else { continue }
+            waiting.append(window)
+        }
+        overdueCurrentAsks = overdue
+        waitingWindows = waiting
             .sorted { a, b in
                 // Urgency tiers: permission blocks a running task, a real
                 // ask blocks a decision, a finished reply just waits.
@@ -169,7 +190,7 @@ final class AgentMonitorService {
         let mode = NotificationMode.saved
 
         if mode != .off && !isPaletteVisible {
-            for window in waitingWindows {
+            for window in waitingWindows + overdueCurrentAsks {
                 if mode == .permissionRequests && window.agentActivity != .waitingForPermission {
                     continue
                 }
@@ -190,8 +211,10 @@ final class AgentMonitorService {
             }
         }
 
-        let stillWaiting = Set(waitingWindows.map(\.id))
-        let resolved = notifiedAskAt.keys.filter { !stillWaiting.contains($0) }
+        // Overdue current-window asks count as live: withdrawing a nudge
+        // the moment the next scan runs would retract it unanswered.
+        let stillLive = Set((waitingWindows + overdueCurrentAsks).map(\.id))
+        let resolved = notifiedAskAt.keys.filter { !stillLive.contains($0) }
         if !resolved.isEmpty {
             notifications.withdraw(windowIds: resolved)
             for id in resolved {
