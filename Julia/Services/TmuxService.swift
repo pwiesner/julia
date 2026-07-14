@@ -371,6 +371,27 @@ actor TmuxService {
         _ = try await execute(["switch-client", "-t", sessionName])
     }
 
+    /// PID of the attached tmux client, the most recently active one if
+    /// several are attached — the process whose ancestry leads to the
+    /// terminal app hosting the user's session.
+    nonisolated func attachedClientPid() async -> Int? {
+        let sep = Self.fieldSeparator
+        guard let output = try? await execute([
+            "list-clients", "-F",
+            ["#{client_activity}", "#{client_pid}"].joined(separator: sep)
+        ]) else { return nil }
+        return output.components(separatedBy: "\n")
+            .compactMap { line -> (activity: TimeInterval, pid: Int)? in
+                let parts = line.components(separatedBy: sep)
+                guard parts.count >= 2,
+                      let activity = TimeInterval(parts[0]),
+                      let pid = Int(parts[1]) else { return nil }
+                return (activity, pid)
+            }
+            .max { $0.activity < $1.activity }?
+            .pid
+    }
+
     func createWindow(in sessionName: String? = nil) async throws {
         if let session = sessionName {
             _ = try await execute(["new-window", "-t", session])

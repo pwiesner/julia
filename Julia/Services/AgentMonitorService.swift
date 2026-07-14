@@ -110,7 +110,16 @@ final class AgentMonitorService {
                 sessionName: target.sessionName,
                 windowIndex: target.index
             )
+            await raiseTerminal()
         }
+    }
+
+    /// Brings the terminal hosting the tmux client forward. A jump the
+    /// user can't see isn't a jump: the tmux switch lands behind
+    /// whatever app is frontmost unless the terminal comes with it.
+    private func raiseTerminal() async {
+        guard let clientPid = await tmuxService.attachedClientPid() else { return }
+        TerminalFocusService.activateTerminal(hostingClientPid: clientPid)
     }
 
     private func scan() async {
@@ -238,6 +247,7 @@ final class AgentMonitorService {
                 sessionName: sessionName,
                 windowIndex: windowIndex
             )
+            await raiseTerminal()
         }
     }
 }
