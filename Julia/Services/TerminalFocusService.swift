@@ -8,7 +8,14 @@ import AppKit
 @MainActor
 enum TerminalFocusService {
     static func activateTerminal(hostingClientPid pid: Int) {
-        hostApp(forClientPid: pid)?.activate()
+        guard let app = hostApp(forClientPid: pid) else { return }
+        // Cooperative activation: a plain activate() from an app that
+        // isn't frontmost is silently ignored, and julia never is — it's
+        // a background agent. The notification click or hotkey just gave
+        // julia the user's attention; claim it, then hand the activation
+        // to the terminal.
+        NSApp.activate()
+        app.activate(from: .current, options: [.activateAllWindows])
     }
 
     /// Whether the terminal hosting the tmux client is the frontmost
