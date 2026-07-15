@@ -1,3 +1,4 @@
+import AppKit
 import BeeperKit
 import Foundation
 import Observation
@@ -25,6 +26,7 @@ final class AgentMonitorService {
     private let beeperMonitor = BeeperMonitor()
     private var monitorTask: Task<Void, Never>?
     private var beeperTask: Task<Void, Never>?
+    private var appSwitchTask: Task<Void, Never>?
     /// When the user last looked at each window; disk-backed so a julia
     /// restart doesn't resurrect the badge for already-seen asks.
     private let seenLedger = SeenLedgerService()
@@ -57,6 +59,17 @@ final class AgentMonitorService {
             }
         }
 
+        // Waiting semantics depend on which app is front (a current
+        // window behind Chrome notifies; in front it defers), so app
+        // switches rescan right away instead of riding the 30s tick.
+        appSwitchTask = Task { [weak self] in
+            let activations = NSWorkspace.shared.notificationCenter
+                .notifications(named: NSWorkspace.didActivateApplicationNotification)
+            for await _ in activations {
+                await self?.scan()
+            }
+        }
+
         try? beeperMonitor.start()
         beeperTask = Task { [weak self] in
             guard let changes = self?.beeperMonitor.changes else { return }
@@ -74,6 +87,8 @@ final class AgentMonitorService {
         monitorTask = nil
         beeperTask?.cancel()
         beeperTask = nil
+        appSwitchTask?.cancel()
+        appSwitchTask = nil
         beeperMonitor.stop()
     }
 
@@ -128,14 +143,22 @@ final class AgentMonitorService {
             return
         }
         let windows = sessions.flatMap(\.windows)
+        let statuses = await tmuxService.agentActivities(in: windows)
+        let clientPid = await tmuxService.attachedClientPid()
+        let terminalFrontmost = clientPid
+            .map(TerminalFocusService.isTerminalFrontmost(hostingClientPid:)) ?? false
 
-        // Being on a window counts as seeing whatever it was asking.
+        // Being on a window counts as seeing it only while the terminal
+        // is actually front — behind another app, "current" means
+        // nothing is being seen. A live ask never marks seen either:
+        // it's answered or it keeps counting.
         for window in windows where window.isCurrent {
-            seenLedger.markSeen(window.id)
+            let hasLiveAsk = statuses[window.id].map { $0.activity != .working } ?? false
+            if terminalFrontmost && !hasLiveAsk {
+                seenLedger.markSeen(window.id)
+            }
         }
         seenLedger.prune(keeping: Set(windows.map(\.id)))
-
-        let statuses = await tmuxService.agentActivities(in: windows)
         var waiting: [TmuxWindow] = []
         var overdue: [TmuxWindow] = []
         for var window in windows {
@@ -148,15 +171,15 @@ final class AgentMonitorService {
             guard window.isAwaitingUser else { continue }
             let asked = window.askedAt ?? .distantPast
 
-            if window.isCurrent {
-                // The user is on it, seeing the ask as it happens — no
-                // banner, no badge. Checked here, not just via the seen
-                // ledger, because an ask can land mid-scan, after the
-                // mark-seen pass has already run. But front and center
-                // isn't always looked at: an ask still unanswered after
-                // the nudge delay banners anyway. Beeper-exact ask times
-                // only — a scraped ask time is pane activity, which
-                // stray output keeps perpetually young.
+            if window.isCurrent && terminalFrontmost {
+                // The user is watching the ask happen — no banner, no
+                // badge. But watching isn't always looking: an ask still
+                // unanswered after the nudge delay banners anyway.
+                // Beeper-exact ask times only — a scraped ask time is
+                // pane activity, which stray output keeps perpetually
+                // young. With the terminal behind another app, "current"
+                // earns no deferral: fall through and notify like any
+                // other window.
                 if window.agentSince != nil,
                    Date.now.timeIntervalSince(asked) >= Self.currentWindowNudgeDelay {
                     overdue.append(window)
