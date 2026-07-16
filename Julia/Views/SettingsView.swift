@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var recordingMonitor: Any?
     @AppStorage(PaletteAppearance.defaultsKey) private var appearanceRaw = PaletteAppearance.dark.rawValue
     @AppStorage(NotificationMode.defaultsKey) private var notificationModeRaw = NotificationMode.permissionRequests.rawValue
+    @AppStorage(NudgeDelay.defaultsKey) private var nudgeDelayRaw = NudgeDelay.oneMinute.rawValue
 
     private static let repositoryURL = URL(string: "https://github.com/pwiesner/julia")
     private static let releasesURL = URL(string: "https://github.com/pwiesner/julia/releases")
@@ -38,6 +39,17 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
 
                 Text("Permission requests block a running task; \"All waits\" also notifies whenever an agent finishes and wants a reply.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                Picker("Nudge the window you're on after", selection: $nudgeDelayRaw) {
+                    ForEach(NudgeDelay.allCases) { delay in
+                        Text(delay.label).tag(delay.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text("An ask on the window you're sitting on stays quiet — until it's gone unanswered this long. \"Never\" keeps it quiet for good.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

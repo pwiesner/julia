@@ -46,9 +46,6 @@ final class AgentMonitorService {
     /// Fallback cadence for sessions not reporting through beeper hooks;
     /// hook-reporting sessions update the instant their state changes.
     private static let scanInterval: Duration = .seconds(30)
-    /// How long an ask on the current window can sit unanswered before
-    /// it banners anyway.
-    private static let currentWindowNudgeDelay: TimeInterval = 60
 
     func start() {
         guard monitorTask == nil else { return }
@@ -159,6 +156,7 @@ final class AgentMonitorService {
             }
         }
         seenLedger.prune(keeping: Set(windows.map(\.id)))
+        let nudgeDelay = NudgeDelay.saved
         var waiting: [TmuxWindow] = []
         var overdue: [TmuxWindow] = []
         for var window in windows {
@@ -180,8 +178,8 @@ final class AgentMonitorService {
                 // young. With the terminal behind another app, "current"
                 // earns no deferral: fall through and notify like any
                 // other window.
-                if window.agentSince != nil,
-                   Date.now.timeIntervalSince(asked) >= Self.currentWindowNudgeDelay {
+                if nudgeDelay != .never, window.agentSince != nil,
+                   Date.now.timeIntervalSince(asked) >= nudgeDelay.seconds {
                     overdue.append(window)
                 }
                 continue
