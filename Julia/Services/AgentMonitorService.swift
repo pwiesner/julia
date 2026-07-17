@@ -130,8 +130,7 @@ final class AgentMonitorService {
     /// user can't see isn't a jump: the tmux switch lands behind
     /// whatever app is frontmost unless the terminal comes with it.
     private func raiseTerminal() async {
-        guard let clientPid = await tmuxService.attachedClientPid() else { return }
-        TerminalFocusService.activateTerminal(hostingClientPid: clientPid)
+        TerminalFocusService.activateTerminal(hostingClientPid: await tmuxService.attachedClientPid())
     }
 
     private func scan() async {

@@ -1,4 +1,5 @@
 import AppKit
+import os
 
 /// Locates and raises the terminal app hosting the user's tmux client.
 /// julia only ever talks to the tmux server, so it never learns the
@@ -7,15 +8,47 @@ import AppKit
 /// without hardcoding any of them.
 @MainActor
 enum TerminalFocusService {
-    static func activateTerminal(hostingClientPid pid: Int) {
-        guard let app = hostApp(forClientPid: pid) else { return }
-        // Cooperative activation: a plain activate() from an app that
-        // isn't frontmost is silently ignored, and julia never is — it's
-        // a background agent. The notification click or hotkey just gave
-        // julia the user's attention; claim it, then hand the activation
-        // to the terminal.
-        NSApp.activate()
-        app.activate(from: .current, options: [.activateAllWindows])
+    private nonisolated static let log = Logger(
+        subsystem: "com.pwiesner.julia", category: "terminal-focus"
+    )
+
+    static func activateTerminal(hostingClientPid pid: Int?) {
+        guard let pid else {
+            log.error("raise: no attached tmux client")
+            return
+        }
+        guard let app = hostApp(forClientPid: pid) else {
+            log.error("raise: no GUI app in ancestry of client pid \(pid)")
+            return
+        }
+        log.info("raise: \(app.localizedName ?? "?", privacy: .public) pid \(app.processIdentifier)")
+        // Not activate(): cooperative activation only honors apps the
+        // user just touched, and julia's grant — a notification click —
+        // kept expiring during the tmux round-trips (worked in testing,
+        // died in daily use). LaunchServices doesn't care who asks:
+        // "opening" an already-running app just activates it, the same
+        // way `open -a Terminal` raises it from any shell.
+        guard let bundleURL = app.bundleURL else {
+            // Unbundled terminal (a raw binary): all we have is the
+            // attention-gated path.
+            log.info("raise: unbundled binary, attention-gated fallback")
+            NSApp.activate()
+            app.activate(from: .current, options: [.activateAllWindows])
+            return
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: bundleURL, configuration: configuration) { _, error in
+            if let error {
+                log.error("raise: openApplication failed: \(error.localizedDescription, privacy: .public)")
+            }
+            // Whether activation actually stuck, not just returned.
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(600))
+                let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? "none"
+                log.info("raise: frontmost after 600ms: \(front, privacy: .public)")
+            }
+        }
     }
 
     /// Whether the terminal hosting the tmux client is the frontmost
@@ -43,10 +76,18 @@ enum TerminalFocusService {
         return nil
     }
 
+    /// sysctl, not proc_pidinfo: the ancestry passes through
+    /// /usr/bin/login, which is root-owned, and proc_pidinfo answers
+    /// EPERM for root processes when asked by a user process. sysctl
+    /// exposes the same basic info ps shows, for every process.
     private static func parentPid(of pid: pid_t) -> pid_t {
-        var info = proc_bsdinfo()
-        let size = Int32(MemoryLayout<proc_bsdinfo>.size)
-        guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { return 0 }
-        return pid_t(info.pbi_ppid)
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        guard sysctl(&mib, UInt32(mib.count), &info, &size, nil, 0) == 0, size > 0 else {
+            log.error("walk: sysctl(\(pid)) failed, errno \(errno)")
+            return 0
+        }
+        return info.kp_eproc.e_ppid
     }
 }
