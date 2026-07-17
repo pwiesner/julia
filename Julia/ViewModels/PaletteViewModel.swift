@@ -1000,6 +1000,7 @@ final class PaletteViewModel {
         do {
             try await tmuxService.switchToSession(sessionName)
             recordSessionVisit(named: sessionName)
+            await raiseTerminal()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1009,9 +1010,17 @@ final class PaletteViewModel {
         do {
             try await tmuxService.switchToWindow(sessionName: session, windowIndex: windowIndex)
             recordWindowVisit(session: session, windowIndex: windowIndex)
+            await raiseTerminal()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// A switch the user can't see isn't a switch: invoked from another
+    /// app, the tmux jump lands behind it unless the terminal comes
+    /// forward too.
+    private func raiseTerminal() async {
+        TerminalFocusService.activateTerminal(hostingClientPid: await tmuxService.attachedClientPid())
     }
 
     // MARK: - Private
@@ -1022,10 +1031,12 @@ final class PaletteViewModel {
             case .switchSession(let name):
                 try await tmuxService.switchToSession(name)
                 recordSessionVisit(named: name)
+                await raiseTerminal()
 
             case .switchWindow(let session, let windowIndex):
                 try await tmuxService.switchToWindow(sessionName: session, windowIndex: windowIndex)
                 recordWindowVisit(session: session, windowIndex: windowIndex)
+                await raiseTerminal()
 
             case .command, .showWindows, .showAgents, .showTidy, .showHelp:
                 // Handled before execution or needing more input.
