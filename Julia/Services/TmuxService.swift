@@ -227,12 +227,19 @@ actor TmuxService {
             }
         }
 
+        // Beeper knows an ask happened but not the approval: no hook
+        // fires between "permission granted" and the next tool boundary,
+        // so a long tool run reads as waiting_for_permission for
+        // minutes. The pane knows — Claude Code swaps the prompt for
+        // its working spinner — so permission waits are verified
+        // against what the pane actually shows.
+        let verify = result.filter { $0.value.activity == .waitingForPermission }.map(\.key)
         let candidates = windows
             .filter { result[$0.id] == nil && Self.mayHostAgent($0.currentCommand) }
             .map(\.id)
-        guard !candidates.isEmpty else { return result }
+        guard !(verify.isEmpty && candidates.isEmpty) else { return result }
         await withTaskGroup(of: (String, ClaudeActivity?).self) { group in
-            var pending = candidates.makeIterator()
+            var pending = (verify + candidates).makeIterator()
             func addNext() -> Bool {
                 guard let id = pending.next() else { return false }
                 group.addTask { (id, await self.paneActivity(windowId: id)) }
@@ -243,7 +250,17 @@ actor TmuxService {
             var started = 0
             while started < 6, addNext() { started += 1 }
             for await (id, activity) in group {
-                if let activity { result[id] = AgentStatus(activity: activity) }
+                if var existing = result[id] {
+                    // A beeper permission-wait the pane contradicts:
+                    // the ask was answered, the tool is running.
+                    if activity == .working, existing.activity == .waitingForPermission {
+                        existing.activity = .working
+                        existing.message = nil
+                        result[id] = existing
+                    }
+                } else if let activity {
+                    result[id] = AgentStatus(activity: activity)
+                }
                 _ = addNext()
             }
         }
