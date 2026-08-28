@@ -166,6 +166,25 @@ actor TmuxService {
         return map
     }
 
+    /// Whether a beeper session's recorded directory is consistent with the
+    /// pane it claims. Claude's cwd can legitimately sit below the pane's
+    /// path (it was launched from a subdirectory) or above it (the pane has
+    /// since cd'd deeper), so containment in either direction counts as
+    /// agreement — only an outright different tree rejects the entry. When
+    /// either side is unknown there is nothing to disprove, so the claim
+    /// stands and the pane match decides.
+    nonisolated static func directoriesAgree(_ sessionPath: String, _ panePath: String?) -> Bool {
+        guard let panePath else { return true }
+        let session = trimmingTrailingSlash(sessionPath)
+        let pane = trimmingTrailingSlash(panePath)
+        guard !session.isEmpty, !pane.isEmpty else { return true }
+        return session == pane || session.hasPrefix("\(pane)/") || pane.hasPrefix("\(session)/")
+    }
+
+    private nonisolated static func trimmingTrailingSlash(_ path: String) -> String {
+        path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
+    }
+
     /// Captures the given window's active pane and classifies any Claude
     /// session found in it.
     private nonisolated func paneActivity(windowId: String) async -> ClaudeActivity? {
@@ -200,12 +219,30 @@ actor TmuxService {
     nonisolated func agentActivities(in windows: [TmuxWindow]) async -> [String: AgentStatus] {
         var result: [String: AgentStatus] = [:]
 
-        // Pane ids are never reused within a tmux server's lifetime, so a
-        // stale state file (session died without SessionEnd) simply maps
-        // to no live pane and drops out.
+        // A pane id alone is not a safe key into the beeper store, on two
+        // counts. The store outlives the tmux server — files are only
+        // removed on SessionEnd, which never fires for a kill, a reboot,
+        // or a closed terminal — and ids restart at %0 with each server,
+        // so weeks-dead sessions land squarely on live windows. And the
+        // recorded pane is latched when the session starts and never
+        // revised, so resuming in another pane leaves it pointing at the
+        // old one. The recorded directory has to agree with the pane's
+        // before the entry is believed; where two survivors still claim
+        // one window, the freshest report wins.
         if let paneMap = try? await paneWindowMap() {
-            for session in BeeperStore.sessions() {
-                guard let pane = session.tmuxPane, let windowId = paneMap[pane] else { continue }
+            let panePaths = Dictionary(
+                windows.map { ($0.id, $0.currentPath) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            let claims = BeeperStore.sessions()
+                .compactMap { session -> (windowId: String, session: AgentSession)? in
+                    guard let pane = session.tmuxPane, let windowId = paneMap[pane] else { return nil }
+                    guard Self.directoriesAgree(session.cwd, panePaths[windowId] ?? nil) else { return nil }
+                    return (windowId, session)
+                }
+                .sorted { $0.session.updatedAt < $1.session.updatedAt }
+
+            for (windowId, session) in claims {
                 let activity: ClaudeActivity = switch session.state {
                 case .working: .working
                 case .waitingForInput: .waitingForInput
