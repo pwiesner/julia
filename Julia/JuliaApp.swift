@@ -75,6 +75,9 @@ struct JuliaApp: App {
         )
         paletteController.show(content: paletteView)
         agentMonitor.paletteDidShow()
+        // A tmux server replaced while julia stayed running took the
+        // visit hooks with it; catch that here rather than only at launch.
+        visitIngest.reassertHooks()
     }
 
     /// Opens the palette directly on the keymap page — the menu bar path

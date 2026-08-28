@@ -51,9 +51,14 @@ enum HealthService {
             return Dependency(name: "visit hooks", rank: 2, level: .limited, detail: "needs tmux")
         }
         let hooks = (try? await TmuxService().globalHooks()) ?? ""
-        return hooks.contains("visits.log")
-            ? Dependency(name: "visit hooks", rank: 2, level: .good, detail: "native switches feed frecency")
-            : Dependency(name: "visit hooks", rank: 2, level: .limited, detail: "only palette jumps rank")
+        guard hooks.contains("visits.log") else {
+            return Dependency(name: "visit hooks", rank: 2, level: .limited, detail: "only palette jumps rank")
+        }
+        // Finding them installed is itself proof of a past grant, which
+        // covers anyone who pressed the button before julia started
+        // remembering that they had.
+        VisitIngestService.isAuthorized = true
+        return Dependency(name: "visit hooks", rank: 2, level: .good, detail: "native switches feed frecency")
     }
 
     /// True when the visit hooks aren't installed and could be — drives
@@ -64,7 +69,11 @@ enum HealthService {
     }
 
     static func installVisitHooks() async {
-        try? await TmuxService().installVisitHooks(logPath: VisitIngestService.logPath)
+        let tmux = TmuxService()
+        try? await tmux.installVisitHooks(logPath: VisitIngestService.logPath)
+        // Remembered so the next tmux server gets them too, without
+        // asking again for a permission already given.
+        VisitIngestService.isAuthorized = true
     }
 
     private static func checkTmux() async -> Dependency {

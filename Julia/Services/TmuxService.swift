@@ -386,6 +386,15 @@ actor TmuxService {
         }
     }
 
+    /// The tmux server's pid. It changes only when the server itself is
+    /// replaced — which is precisely when every hook installed on the old
+    /// one ceases to exist, since tmux keeps hooks in server memory.
+    func serverPid() async -> String? {
+        guard let pid = try? await execute(["display-message", "-p", "#{pid}"]) else { return nil }
+        let trimmed = pid.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     func isServerRunning() async -> Bool {
         do {
             _ = try await execute(["list-sessions"])

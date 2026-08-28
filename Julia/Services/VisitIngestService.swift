@@ -24,10 +24,28 @@ final class VisitIngestService {
     /// Below this, an immediately-abandoned stop is pass-through.
     private static let chainWindow: TimeInterval = 2
 
+    /// Set once the user authorizes hook installation from the settings
+    /// health row. tmux keeps hooks in the server's memory, so the ones
+    /// they authorized die with the server and native switches stop
+    /// feeding frecency in silence — the ranking simply stops learning,
+    /// with nothing on screen to say so. The grant has to outlive the
+    /// server it was given on; the install itself stays theirs to ask for.
+    private nonisolated static let authorizedKey = "visitHooks.authorized"
+
+    /// Nonisolated like `logPath`: the health checks run off the main
+    /// actor, and UserDefaults is safe from any thread.
+    nonisolated static var isAuthorized: Bool {
+        get { UserDefaults.standard.bool(forKey: authorizedKey) }
+        set { UserDefaults.standard.set(newValue, forKey: authorizedKey) }
+    }
+
     private var source: (any DispatchSourceFileSystemObject)?
     private var offset: UInt64 = 0
     private var pending: (windowId: String, sessionId: String, at: Date)?
     private var commitTask: Task<Void, Never>?
+    /// The server julia last installed hooks on, so a replacement is
+    /// noticed without re-running set-hook on every palette open.
+    private var hookedServerPid: String?
 
     init(history: VisitHistoryService) {
         self.history = history
@@ -49,6 +67,22 @@ final class VisitIngestService {
         offset = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? UInt64) ?? 0
 
         watch()
+        reassertHooks()
+    }
+
+    /// Re-applies the visit hooks when the server they were installed on
+    /// has been replaced. Still never installs uninvited: without a prior
+    /// grant this does nothing and the health row keeps offering the
+    /// button. Cheap enough to call on every palette open — it costs one
+    /// `display-message` unless the server has actually changed.
+    func reassertHooks() {
+        guard Self.isAuthorized else { return }
+        Task {
+            let tmux = TmuxService()
+            guard let pid = await tmux.serverPid(), pid != hookedServerPid else { return }
+            try? await tmux.installVisitHooks(logPath: Self.logPath)
+            hookedServerPid = pid
+        }
     }
 
     func stop() {
