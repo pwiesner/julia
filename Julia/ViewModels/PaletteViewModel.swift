@@ -180,32 +180,29 @@ final class PaletteViewModel {
         return items
     }
 
-    /// All windows in working-set order: visited windows by frecency, then
-    /// unvisited ones by tmux activity, with the window the user is
-    /// sitting in last — the palette exists to leave it.
+    /// All windows in working-set order on one continuous frecency curve,
+    /// with the window the user is sitting in last — the palette exists to
+    /// leave it. Visited and unvisited windows share the scale rather than
+    /// splitting into tiers, so a window last opened a fortnight ago falls
+    /// below one that saw output minutes ago instead of pinning the top row.
     private var recentWindowItems: [PaletteItem] {
         let all = sessions.flatMap { session in
             session.windows.map { (session: session, window: $0) }
         }
         let now = Date.now
 
-        func rank(_ window: TmuxWindow) -> (tier: Int, value: Double) {
-            if window.isCurrent {
-                (2, 0)
-            } else if let score = visitHistory.score(id: window.id, now: now) {
-                (0, score)
-            } else {
-                (1, window.lastActivity?.timeIntervalSince1970 ?? 0)
-            }
+        func rank(_ window: TmuxWindow) -> Double {
+            guard !window.isCurrent else { return -.infinity }
+            return visitHistory.score(id: window.id, now: now)
+                ?? VisitHistoryService.activityScore(at: window.lastActivity, now: now)
         }
 
+        // Scored once up front: body runs often and rank() walks every
+        // recorded visit, which a sort comparator would redo each compare.
         return all
-            .sorted {
-                let a = rank($0.window)
-                let b = rank($1.window)
-                return a.tier != b.tier ? a.tier < b.tier : a.value > b.value
-            }
-            .map { Self.windowItem(for: $0.window, in: $0.session) }
+            .map { (entry: $0, rank: rank($0.window)) }
+            .sorted { $0.rank > $1.rank }
+            .map { Self.windowItem(for: $0.entry.window, in: $0.entry.session) }
     }
 
     /// All agents in labeled sections: blocked on permission first (they
@@ -307,28 +304,22 @@ final class PaletteViewModel {
             && searchText.isEmpty && filteredItems.isEmpty
     }
 
-    /// All sessions ranked for flipping: visited sessions by frecency, then
-    /// the rest by last attach time, with the attached session last.
+    /// All sessions ranked for flipping, on the same continuous curve the
+    /// windows use — last attach standing in for activity — with the
+    /// attached session last.
     private var frecentSessionItems: [PaletteItem] {
         let now = Date.now
 
-        func rank(_ session: TmuxSession) -> (tier: Int, value: Double) {
-            if session.isAttached {
-                (2, 0)
-            } else if let score = visitHistory.score(id: session.id, now: now) {
-                (0, score)
-            } else {
-                (1, session.lastAttached?.timeIntervalSince1970 ?? 0)
-            }
+        func rank(_ session: TmuxSession) -> Double {
+            guard !session.isAttached else { return -.infinity }
+            return visitHistory.score(id: session.id, now: now)
+                ?? VisitHistoryService.activityScore(at: session.lastAttached, now: now)
         }
 
         return sessions
-            .sorted {
-                let a = rank($0)
-                let b = rank($1)
-                return a.tier != b.tier ? a.tier < b.tier : a.value > b.value
-            }
-            .map { session in
+            .map { (session: $0, rank: rank($0)) }
+            .sorted { $0.rank > $1.rank }
+            .map { (session, _) in
                 PaletteItem(
                     title: session.name,
                     subtitle: Self.sessionSubtitle(for: session),

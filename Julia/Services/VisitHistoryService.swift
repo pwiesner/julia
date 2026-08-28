@@ -56,12 +56,49 @@ final class VisitHistoryService {
         return Date.now.timeIntervalSince(recorded) < interval
     }
 
-    /// Exponentially decayed visit count; nil if never visited.
+    /// Recency term: how fresh the newest visit is. Decays four times
+    /// faster than the frequency term and outweighs it by three orders of
+    /// magnitude, so the window you were last in is the top row and the
+    /// working set orders itself underneath by how hard you lean on it.
+    /// Only visits within minutes of each other land close enough on this
+    /// curve for frequency to decide between them — which is exactly the
+    /// pair you are ping-ponging through.
+    private static let recencyHalfLife: TimeInterval = 6 * 60 * 60
+    private static let recencyWeight: Double = 1000
+
+    /// Windows julia has never watched you visit are ranked by tmux's own
+    /// activity clock on the same curve, discounted: output is not intent.
+    /// An agent printing tokens should place below a window you actually
+    /// chose today, but above one you opened a fortnight ago and forgot.
+    private static let activityDiscount: Double = 0.25
+
+    private static func decay(_ age: TimeInterval, halfLife: TimeInterval) -> Double {
+        pow(2, -age / halfLife)
+    }
+
+    /// Recency-dominant frecency; nil if never visited. Deliberately not a
+    /// plain decayed count: summed frequency alone let a window with a
+    /// fortnight of accumulated history sit above the one you left ten
+    /// seconds ago, which is the opposite of what the top row is for.
     func score(id: String, now: Date = .now) -> Double? {
-        guard let dates = visits[id], !dates.isEmpty else { return nil }
-        return dates.reduce(0) { total, date in
-            total + pow(2, -now.timeIntervalSince(date) / Self.halfLife)
+        guard let dates = visits[id], let newest = dates.max() else { return nil }
+        let frequency = dates.reduce(0.0) { total, date in
+            total + Self.decay(now.timeIntervalSince(date), halfLife: Self.halfLife)
         }
+        let recency = Self.decay(now.timeIntervalSince(newest), halfLife: Self.recencyHalfLife)
+        return Self.recencyWeight * recency + frequency
+    }
+
+    /// Where a never-visited window or session sits on the same curve, so
+    /// the two populations can be ranked together instead of in tiers. The
+    /// old tier split asked only *whether* a visit existed, so a single
+    /// visit from weeks ago — decayed to a millionth of a point, but not
+    /// nil — outranked every window in live use.
+    static func activityScore(at lastActivity: Date?, now: Date = .now) -> Double {
+        guard let lastActivity else { return 0 }
+        let age = now.timeIntervalSince(lastActivity)
+        let recency = decay(age, halfLife: recencyHalfLife)
+        return activityDiscount * (recencyWeight * recency + decay(age, halfLife: halfLife))
     }
 
     /// Ids reset when the tmux server restarts; drop entries for windows
